@@ -221,7 +221,7 @@ function renderProductsTable(products) {
     tbody.innerHTML = products.map(product => {
         // Fix image URL to point to backend
         const imageUrl = product.images && product.images[0] 
-            ? 'https://kuku-yetu-backend.onrender.com' + product.images[0]
+            ? 'https://kuku-backend.onrender.com' + product.images[0]
             : '/assets/images/placeholder.jpg';
         
         return `
@@ -552,7 +552,7 @@ async function openEditProductModal(productId) {
         if (previewDiv) {
             if (product.images && product.images.length > 0) {
                 previewDiv.innerHTML = product.images.map(img => {
-                    const imageUrl = 'https://kuku-yetu-backend.onrender.com' + img;
+                    const imageUrl = 'https://kuku-backend.onrender.com' + img;
                     return `
                         <div style="position: relative; display: inline-block; margin: 5px;" data-image="${img}">
                             <img src="${imageUrl}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
