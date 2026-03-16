@@ -13,7 +13,7 @@ let currentUser = null;
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000/api' 
-    : window.API_BASE_URL || 'https://kuku-yetu-backend.onrender.com/api';
+    : window.API_BASE_URL || 'https://kuku-backend.onrender.com/api';
 
 // Pagination variables
 let currentPageNumber = 1;
@@ -584,7 +584,7 @@ function renderProductModal(product) {
             <div class="product-images">
                 <div class="image-slider">
                     <div class="slider-container" id="imageSlider">
-                        ${product.images.map(img => `<img src="https://kuku-yetu-backend.onrender.com${img}" alt="${product.title}" onerror="this.src='/assets/images/placeholder.jpg'">`).join('')}
+                        ${product.images.map(img => `<img src="https://kuku-backend.onrender.com${img}" alt="${product.title}" onerror="this.src='/assets/images/placeholder.jpg'">`).join('')}
                     </div>
                     ${product.images.length > 1 ? `
                         <button class="slider-btn prev" onclick="slideImage(-1)"><i class="fas fa-chevron-left"></i></button>
@@ -1452,7 +1452,30 @@ async function confirmOrder() {
             
             setTimeout(() => {
                 navigateTo('profile');
-                viewOrderHistory();
+                viewOrderHistory();main.js:114  Loading all products...
+(index):1 Access to fetch at 'https://kuku-yetu-backend.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+main.js:1831  GET https://kuku-yetu-backend.onrender.com/api/products net::ERR_FAILED 200 (OK)
+getProducts @ main.js:1831
+loadAllProducts @ main.js:115
+initApp @ main.js:81
+(anonymous) @ main.js:67
+main.js:1834 Error fetching products: TypeError: Failed to fetch
+    at getProducts (main.js:1831:32)
+    at loadAllProducts (main.js:115:32)
+    at initApp (main.js:81:15)
+    at HTMLDocument.<anonymous> (main.js:67:5)
+getProducts @ main.js:1834
+await in getProducts
+loadAllProducts @ main.js:115
+initApp @ main.js:81
+(anonymous) @ main.js:67
+main.js:116 API Response: {success: false, products: Array(0)}
+main.js:125 Unexpected response format, using empty array
+loadAllProducts @ main.js:125
+await in loadAllProducts
+initApp @ main.js:81
+(anonymous) @ main.js:67
+
             }, 2000);
             
         } else {
