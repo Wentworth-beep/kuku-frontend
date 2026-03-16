@@ -1453,8 +1453,8 @@ async function confirmOrder() {
             setTimeout(() => {
                 navigateTo('profile');
                 viewOrderHistory();main.js:114  Loading all products...
-(index):1 Access to fetch at 'https://kuku-yetu-backend.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-main.js:1831  GET https://kuku-yetu-backend.onrender.com/api/products net::ERR_FAILED 200 (OK)
+(index):1 Access to fetch at 'https://kuku-backend.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+main.js:1831  GET https://kuku-backend.onrender.com/api/products net::ERR_FAILED 200 (OK)
 getProducts @ main.js:1831
 loadAllProducts @ main.js:115
 initApp @ main.js:81
@@ -1484,7 +1484,7 @@ initApp @ main.js:81
         
     } catch (error) {
         console.error('Order confirmation error:', error);
-        showToast('❌ Failed to confirm order: ' + error.message, 'error');
+        showToast(' Failed to confirm order: ' + error.message, 'error');
     } finally {
         hideLoading();
     }
