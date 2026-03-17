@@ -221,7 +221,7 @@ function renderProductsTable(products) {
     tbody.innerHTML = products.map(product => {
         // Fix image URL to point to backend
         const imageUrl = product.images && product.images[0] 
-            ? 'https://kuku-backend.onrender.com' + product.images[0]
+            ? 'https://kuku-backend-ntr4.onrender.com' + product.images[0]
             : '/assets/images/placeholder.jpg';
         
         return `
