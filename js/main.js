@@ -1,4 +1,3 @@
-
 // Global variables
 let products = [];
 let allProducts = []; // Store all products for filtering
@@ -111,16 +110,16 @@ async function initApp() {
 
 async function loadAllProducts() {
     try {
-        console.log(' Loading all products...');
+        console.log('📦 Loading all products...');
         const response = await getProducts();
-        console.log('API Response:', response);
+        console.log('📦 API Response:', response);
         
         if (response && response.success === true && response.products) {
             allProducts = response.products;
-            console.log(` Loaded ${allProducts.length} products from API`);
+            console.log(`✅ Loaded ${allProducts.length} products from API`);
         } else if (Array.isArray(response)) {
             allProducts = response;
-            console.log(`Loaded ${allProducts.length} products from array`);
+            console.log(`✅ Loaded ${allProducts.length} products from array`);
         } else {
             console.warn('Unexpected response format, using empty array');
             allProducts = [];
@@ -132,7 +131,7 @@ async function loadAllProducts() {
         await loadProductsPage(1);
         
     } catch (error) {
-        console.error(' Failed to load products:', error);
+        console.error('❌ Failed to load products:', error);
         showToast('Failed to load products', 'error');
         allProducts = [];
         if (productsGrid) {
@@ -162,7 +161,7 @@ async function loadProductsPage(page) {
     }
     
     hasMoreProducts = end < allProducts.length;
-    console.log(` Page ${page}: Loaded ${pageProducts.length} products, more: ${hasMoreProducts}`);
+    console.log(`📄 Page ${page}: Loaded ${pageProducts.length} products, more: ${hasMoreProducts}`);
 }
 
 function renderProducts(productsToRender) {
@@ -232,17 +231,20 @@ function createProductCard(product) {
         stockClass = 'out';
         stockText = 'Out of stock';
     }
-     const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 200\'%3E%3Crect width=\'300\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
+    
+    const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 200\'%3E%3Crect width=\'300\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
     
     // Fix image URL - handle weird formatting
-let imagePath = product.images && product.images[0] ? product.images[0] : '';
-// Remove extra braces if they exist
-if (imagePath.startsWith('{{') && imagePath.endsWith('}}')) {
-    imagePath = imagePath.slice(1, -1);
-}
+    let imagePath = product.images && product.images[0] ? product.images[0] : '';
+    // Remove extra braces if they exist
+    if (imagePath.startsWith('{{') && imagePath.endsWith('}}')) {
+        imagePath = imagePath.slice(1, -1);
+    }
+    
     const imageUrl = imagePath 
-    ? 'https://kuku-yetu-backend-ntr4.onrender.com' + imagePath
-    : '/assets/images/placeholder.jpg';
+        ? 'https://kuku-backend-ntr4.onrender.com' + imagePath
+        : '/assets/images/placeholder.jpg';
+    
     return `
         <div class="product-card" data-product-id="${product.id}">
             <div class="product-image">
@@ -750,7 +752,7 @@ function renderCart() {
             ${cart.map(item => {
                 // Fix cart image URL
                 const cartImageUrl = item.image 
-                    ? 'https://kuku-yetu-backend-ntr4.onrender.com' + item.image 
+                    ? 'https://kuku-backend-ntr4.onrender.com' + item.image 
                     : '/assets/images/placeholder.jpg';
                 return `
                     <div class="cart-item" style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid #eee;">
@@ -1452,30 +1454,7 @@ async function confirmOrder() {
             
             setTimeout(() => {
                 navigateTo('profile');
-                viewOrderHistory();main.js:114  Loading all products...
-(index):1 Access to fetch at 'https://kuku-backend-ntr4.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-main.js:1831  GET https://kuku-backend-ntr4.onrender.com/api/products net::ERR_FAILED 200 (OK)
-getProducts @ main.js:1831
-loadAllProducts @ main.js:115
-initApp @ main.js:81
-(anonymous) @ main.js:67
-main.js:1834 Error fetching products: TypeError: Failed to fetch
-    at getProducts (main.js:1831:32)
-    at loadAllProducts (main.js:115:32)
-    at initApp (main.js:81:15)
-    at HTMLDocument.<anonymous> (main.js:67:5)
-getProducts @ main.js:1834
-await in getProducts
-loadAllProducts @ main.js:115
-initApp @ main.js:81
-(anonymous) @ main.js:67
-main.js:116 API Response: {success: false, products: Array(0)}
-main.js:125 Unexpected response format, using empty array
-loadAllProducts @ main.js:125
-await in loadAllProducts
-initApp @ main.js:81
-(anonymous) @ main.js:67
-
+                viewOrderHistory();
             }, 2000);
             
         } else {
@@ -1484,7 +1463,7 @@ initApp @ main.js:81
         
     } catch (error) {
         console.error('Order confirmation error:', error);
-        showToast(' Failed to confirm order: ' + error.message, 'error');
+        showToast('❌ Failed to confirm order: ' + error.message, 'error');
     } finally {
         hideLoading();
     }
