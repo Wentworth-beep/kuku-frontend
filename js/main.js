@@ -241,7 +241,7 @@ if (imagePath.startsWith('{{') && imagePath.endsWith('}}')) {
     imagePath = imagePath.slice(1, -1);
 }
     const imageUrl = imagePath 
-    ? 'https://kuku-yetu-backend.onrender.com' + imagePath
+    ? 'https://kuku-yetu-backend-ntr4.onrender.com' + imagePath
     : '/assets/images/placeholder.jpg';
     return `
         <div class="product-card" data-product-id="${product.id}">
@@ -750,7 +750,7 @@ function renderCart() {
             ${cart.map(item => {
                 // Fix cart image URL
                 const cartImageUrl = item.image 
-                    ? 'https://kuku-yetu-backend.onrender.com' + item.image 
+                    ? 'https://kuku-yetu-backend-ntr4.onrender.com' + item.image 
                     : '/assets/images/placeholder.jpg';
                 return `
                     <div class="cart-item" style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid #eee;">
