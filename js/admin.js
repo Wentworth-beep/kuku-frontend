@@ -8,7 +8,7 @@ let imagesToRemove = [];
 // API Base URL
 const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000/api' 
-    : 'https://kuku-backend.onrender.com/api';
+    : 'https://kuku-backend-ntr4.onrender.com/api';
 
 // Check if admin is logged in
 document.addEventListener('DOMContentLoaded', () => {
