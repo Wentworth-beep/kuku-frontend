@@ -13,7 +13,7 @@ let currentUser = null;
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000/api' 
-    : window.API_BASE_URL || 'https://kuku-backend.onrender.com/api';
+    : window.API_BASE_URL || 'https://kuku-backend-ntr4.onrender.com/api';
 
 // Pagination variables
 let currentPageNumber = 1;
@@ -584,7 +584,7 @@ function renderProductModal(product) {
             <div class="product-images">
                 <div class="image-slider">
                     <div class="slider-container" id="imageSlider">
-                        ${product.images.map(img => `<img src="https://kuku-backend.onrender.com${img}" alt="${product.title}" onerror="this.src='/assets/images/placeholder.jpg'">`).join('')}
+                        ${product.images.map(img => `<img src="https://kuku-backend-ntr4.onrender.com${img}" alt="${product.title}" onerror="this.src='/assets/images/placeholder.jpg'">`).join('')}
                     </div>
                     ${product.images.length > 1 ? `
                         <button class="slider-btn prev" onclick="slideImage(-1)"><i class="fas fa-chevron-left"></i></button>
@@ -1453,8 +1453,8 @@ async function confirmOrder() {
             setTimeout(() => {
                 navigateTo('profile');
                 viewOrderHistory();main.js:114  Loading all products...
-(index):1 Access to fetch at 'https://kuku-backend.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-main.js:1831  GET https://kuku-backend.onrender.com/api/products net::ERR_FAILED 200 (OK)
+(index):1 Access to fetch at 'https://kuku-backend-ntr4.onrender.com/api/products' from origin 'https://kuku-frontend-ten.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+main.js:1831  GET https://kuku-backend-ntr4.onrender.com/api/products net::ERR_FAILED 200 (OK)
 getProducts @ main.js:1831
 loadAllProducts @ main.js:115
 initApp @ main.js:81
