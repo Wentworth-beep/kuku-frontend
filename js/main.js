@@ -1,3 +1,16 @@
+// ============== API CONFIGURATION ==============
+const API_BASE_URL = 'https://kuku-backend-ntr4.onrender.com';
+
+// Override fetch to use the correct API base
+const originalFetch = window.fetch;
+window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.startsWith('/api')) {
+        url = API_BASE_URL + url;
+        console.log('🌐 Fetching from:', url);
+    }
+    return originalFetch(url, options);
+};
+
 // ============== GLOBAL VARIABLES ==============
 let currentUser = null;
 let cart = [];
@@ -20,11 +33,13 @@ function getImageUrl(product) {
         if (imageFile.startsWith('http')) {
             return imageFile;
         }
-        // For uploaded images
-        return `/uploads/${imageFile}`;
+        // Remove leading slash if present
+        const cleanPath = imageFile.startsWith('/') ? imageFile.slice(1) : imageFile;
+        // For uploaded images, use full Render URL
+        return `${API_BASE_URL}/${cleanPath}`;
     }
     
-    // Category-based fallback images
+    // Category-based fallback images (using local images)
     const categoryImages = {
         'broilers': '/images/kienyeji.jpg',
         'layers': '/images/feeds.jpg',
@@ -32,7 +47,7 @@ function getImageUrl(product) {
         'chicks': '/images/chicks.jpg'
     };
     
-    // Try category-based image
+    // Try category-based image (local)
     if (product.category && categoryImages[product.category.toLowerCase()]) {
         return categoryImages[product.category.toLowerCase()];
     }
@@ -44,7 +59,7 @@ function getImageUrl(product) {
 
 // Image error handler
 function handleImageError(img, product) {
-    console.warn('Image failed to load:', img.src, 'for product:', product.title);
+    console.warn('Image failed to load:', img.src, 'for product:', product?.title);
     
     // Try category-based fallback
     const categoryImages = {
@@ -54,15 +69,15 @@ function handleImageError(img, product) {
         'chicks': '/images/chicks.jpg'
     };
     
-    if (product.category && categoryImages[product.category.toLowerCase()]) {
+    if (product?.category && categoryImages[product.category.toLowerCase()]) {
         img.src = categoryImages[product.category.toLowerCase()];
         img.onerror = () => {
             // Ultimate fallback if even category image fails
-            img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dy='.3em'%3E${product.category || 'No Image'}%3C/text%3E%3C/svg%3E`;
+            img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dy='.3em'%3E${product?.category || 'No Image'}%3C/text%3E%3C/svg%3E`;
         };
     } else {
         // Ultimate fallback
-        img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dy='.3em'%3E${product.category || 'No Image'}%3C/text%3E%3C/svg%3E`;
+        img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dy='.3em'%3E${product?.category || 'No Image'}%3C/text%3E%3C/svg%3E`;
     }
 }
 
@@ -320,9 +335,15 @@ function displayCartItems() {
     let total = 0;
     container.innerHTML = cart.map((item, index) => {
         total += item.price * item.quantity;
+        const imageUrl = item.images?.[0] ? `${API_BASE_URL}/uploads/${item.images[0]}` : '/images/placeholder.jpg';
+        
         return `
         <div class="cart-item">
-            <img src="${item.images?.[0] ? '/uploads/' + item.images[0] : '/images/placeholder.jpg'}" alt="${item.title}" class="cart-item-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\'%3E%3Crect width=\\'60\\' height=\\'60\\' fill=\\'%23f0f0f0\\'/%3E%3Ctext x=\\'30\\' y=\\'30\\' font-family=\\'Arial\\' font-size=\\'10\\' fill=\\'%23999\\' text-anchor=\\'middle\\' dy=\\'.3em\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${imageUrl}" 
+                 alt="${item.title}" 
+                 class="cart-item-image" 
+                 onerror="this.src='/images/placeholder.jpg'; this.onerror=null;"
+                 style="width: 60px; height: 60px; object-fit: cover;">
             <div class="cart-item-details">
                 <div class="cart-item-title">${item.title}</div>
                 <div class="cart-item-price">KSh ${item.price}</div>
@@ -356,6 +377,69 @@ function removeFromCart(index) {
         updateCartBadge();
         showNotification('Item removed from cart', 'info');
     }
+}
+
+// ============== PRODUCT MODAL ==============
+function openProductModal(product) {
+    currentProduct = product;
+    const modal = document.getElementById('productModal');
+    if (!modal) return;
+    
+    document.getElementById('modalTitle').textContent = product.title;
+    document.getElementById('modalPrice').textContent = 'KSh ' + product.price;
+    document.getElementById('modalOldPrice').textContent = product.old_price ? 'KSh ' + product.old_price : '';
+    document.getElementById('modalDescription').textContent = product.description;
+    document.getElementById('modalRating').innerHTML = generateStars(product.rating);
+    
+    const slider = document.getElementById('imageSlider');
+    if (product.images && product.images.length > 0) {
+        slider.innerHTML = product.images.map(img => {
+            const imageUrl = img.startsWith('http') ? img : `${API_BASE_URL}/uploads/${img}`;
+            return `<img src="${imageUrl}" alt="${product.title}" onerror="this.src='${API_BASE_URL}/uploads/placeholder.jpg'">`;
+        }).join('');
+        startImageSlider();
+    } else {
+        slider.innerHTML = `<img src="${API_BASE_URL}/uploads/placeholder.jpg" alt="No image">`;
+    }
+    
+    modal.classList.add('active');
+}
+
+function startImageSlider() {
+    const slider = document.getElementById('imageSlider');
+    const dots = document.getElementById('sliderDots');
+    if (!slider || !dots) return;
+    
+    const images = slider.children;
+    if (images.length <= 1) return;
+    
+    let currentIndex = 0;
+    dots.innerHTML = Array.from({ length: images.length }, (_, i) => 
+        `<span class="slider-dot ${i === 0 ? 'active' : ''}" onclick="slideToImage(${i})"></span>`
+    ).join('');
+    
+    if (slideInterval) clearInterval(slideInterval);
+    
+    slideInterval = setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.length;
+        slideToImage(currentIndex);
+    }, 3000);
+}
+
+function slideToImage(index) {
+    const slider = document.getElementById('imageSlider');
+    const dots = document.querySelectorAll('.slider-dot');
+    if (!slider) return;
+    
+    slider.style.transform = `translateX(-${index * 100}%)`;
+    dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+}
+
+function closeProductModal() {
+    document.getElementById('productModal')?.classList.remove('active');
+    if (slideInterval) clearInterval(slideInterval);
 }
 
 // ============== NOTIFICATIONS ==============
@@ -393,6 +477,11 @@ async function loadNotifications() {
     } catch (error) {
         console.error('Error loading notifications:', error);
     }
+}
+
+function markNotificationRead(id) {
+    // Implement if needed
+    console.log('Mark notification as read:', id);
 }
 
 // ============== AUTH FUNCTIONS ==============
@@ -631,6 +720,264 @@ async function handleRegister(event) {
     }
 }
 
+// ============== LOCATION FUNCTIONS ==============
+function getUserLocation() {
+    const input = document.getElementById('locationInput');
+    if (!input) return;
+    
+    input.value = 'Detecting location...';
+    input.disabled = true;
+    
+    if (!navigator.geolocation) {
+        input.value = '';
+        input.disabled = false;
+        input.placeholder = 'Geolocation not supported';
+        showNotification('Geolocation not supported. Enter address manually.', 'error');
+        return;
+    }
+    
+    const timeoutId = setTimeout(() => {
+        input.value = '';
+        input.disabled = false;
+        input.placeholder = 'Location detection timed out';
+        showNotification('Location detection timed out. Please enter manually.', 'error');
+    }, 10000);
+    
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            clearTimeout(timeoutId);
+            
+            try {
+                console.log('Got coordinates:', position.coords.latitude, position.coords.longitude);
+                
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&zoom=18&addressdetails=1`,
+                    {
+                        headers: {
+                            'Accept-Language': 'en',
+                            'User-Agent': 'KUKU YETU App'
+                        }
+                    }
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    let address = data.display_name || `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    input.value = address;
+                    showNotification('Location detected successfully', 'success');
+                } else {
+                    input.value = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    showNotification('Location detected (coordinates only)', 'info');
+                }
+            } catch (error) {
+                console.error('Error getting location:', error);
+                input.value = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                showNotification('Location detected (coordinates only)', 'info');
+            } finally {
+                input.disabled = false;
+            }
+        },
+        (error) => {
+            clearTimeout(timeoutId);
+            console.error('Geolocation error:', error);
+            
+            input.value = '';
+            input.disabled = false;
+            input.placeholder = 'Enter location manually';
+            
+            let errorMsg = 'Unable to get location. ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMsg += 'Please enable location access and try again, or enter manually.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMsg += 'Location information unavailable.';
+                    break;
+                case error.TIMEOUT:
+                    errorMsg += 'Location request timed out.';
+                    break;
+                default:
+                    errorMsg += 'Please enter manually.';
+            }
+            showNotification(errorMsg, 'error');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+}
+
+// ============== ORDER FUNCTIONS ==============
+function proceedToCheckout() {
+    console.log('Proceed to checkout clicked');
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showNotification('Please login to checkout', 'error');
+        openAuthModal();
+        return;
+    }
+    
+    if (!cart || cart.length === 0) {
+        showNotification('Your cart is empty', 'error');
+        return;
+    }
+    
+    window.location.href = '/checkout.html';
+}
+
+async function confirmOrder() {
+    console.log('confirmOrder started');
+    
+    if (!currentUser) {
+        showNotification('Please login to confirm order', 'error');
+        openAuthModal();
+        return;
+    }
+
+    if (cart.length === 0) {
+        showNotification('Your cart is empty. Please add items to your cart before confirming payment.', 'error');
+        return;
+    }
+
+    const location = document.getElementById('locationInput')?.value;
+    if (!location) {
+        showNotification('Please provide a delivery location to confirm payment.', 'error');
+        return;
+    }
+
+    const specificAddress = document.getElementById('specificAddress')?.value || '';
+    const phone = document.getElementById('phone')?.value || currentUser.phone || '';
+    
+    if (!phone) {
+        showNotification('Please provide a phone number', 'error');
+        return;
+    }
+    
+    const total = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+    
+    const products = cart.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity || 1,
+        price: item.price
+    }));
+    
+    const orderData = {
+        products: products,
+        totalAmount: total,
+        location: location,
+        specificAddress: specificAddress,
+        phone: phone,
+        alternativePhone: document.getElementById('alternativePhone')?.value || ''
+    };
+    
+    console.log('Order data being sent:', orderData);
+
+    const confirmBtn = document.querySelector('.confirm-order-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+    }
+
+    try {
+        showNotification('Processing order...', 'info');
+        
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showNotification('Please login again', 'error');
+            openAuthModal();
+            return;
+        }
+
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token': token
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        console.log('Response status:', response.status);
+        
+        const result = await response.json();
+
+        if (response.ok) {
+            console.log('Order successful:', result);
+            showNotification(`Order #${result.order_number || ''} confirmed successfully!`, 'success');
+            cart = [];
+            saveCart();
+            
+            updateCartBadge();
+            
+            const locationInput = document.getElementById('locationInput');
+            const addressInput = document.getElementById('specificAddress');
+            const phoneInput = document.getElementById('phone');
+            const altPhoneInput = document.getElementById('alternativePhone');
+            
+            if (locationInput) locationInput.value = '';
+            if (addressInput) addressInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+            if (altPhoneInput) altPhoneInput.value = '';
+            
+            closeCartModal();
+            
+            setTimeout(() => {
+                window.location.href = '/orders.html';
+            }, 2000);
+            
+        } else {
+            console.error('Order failed:', result);
+            showNotification(result.msg || result.error || 'Failed to confirm order', 'error');
+            
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm Order';
+            }
+        }
+    } catch (err) {
+        console.error('Exception in confirmOrder:', err);
+        showNotification('An error occurred while confirming the order', 'error');
+        
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm Order';
+        }
+    }
+}
+
+function sendOrderViaWhatsApp() {
+    if (!currentUser) {
+        showNotification('Please login to order via WhatsApp', 'error');
+        openAuthModal();
+        return;
+    }
+
+    if (cart.length === 0) {
+        showNotification('Your cart is empty. Please add items to your cart before confirming payment.', 'error');
+        return;
+    }
+
+    const location = document.getElementById('locationInput')?.value;
+    if (!location) {
+        showNotification('Please provide a delivery location to confirm payment.', 'error');
+        return;
+    }
+
+    const orderDetails = cart.map(item => 
+        `${item.title} x${item.quantity} - KSh ${item.price * item.quantity}`
+    ).join('%0A');
+
+    const total = cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+    const address = document.getElementById('specificAddress')?.value || 'Not provided';
+
+    const message = `Hello KUKU YETU,%0A%0AI would like to place an order:%0A%0A${orderDetails}%0A%0ATotal: KSh ${total}%0A%0ADelivery Location: ${location}%0ASpecific Address: ${address}%0A%0AMy Name: ${currentUser.fullName}%0APhone: ${currentUser.phone}`;
+
+    window.open(`https://wa.me/254112402377?text=${message}`, '_blank');
+}
+
 // ============== NOTIFICATION FUNCTION ==============
 function showNotification(message, type) {
     const notification = document.createElement('div');
@@ -775,11 +1122,18 @@ window.showProfile = showProfile;
 window.addToCart = addToCart;
 window.updateQuantity = updateQuantity;
 window.removeFromCart = removeFromCart;
+window.proceedToCheckout = proceedToCheckout;
+window.confirmOrder = confirmOrder;
+window.getUserLocation = getUserLocation;
+window.sendOrderViaWhatsApp = sendOrderViaWhatsApp;
 window.logout = logout;
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.switchAuthTab = switchAuthTab;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
+window.openProductModal = openProductModal;
+window.closeProductModal = closeProductModal;
+window.slideToImage = slideToImage;
 window.goToPage = goToPage;
 window.handleImageError = handleImageError;
