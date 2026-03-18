@@ -4,234 +4,356 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KUKU YETU - Premium Poultry Products</title>
+    
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Add to both index.html and admin.html in the head section -->
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png">
-<link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
-
+    
+    <!-- Favicon - prevents 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐔</text></svg>">
+    
+    <!-- Preconnect to backend for faster loading -->
+    <link rel="preconnect" href="https://kuku-backend-ntr4.onrender.com">
+    
+    <style>
+        /* Quick inline styles to prevent layout shift */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+        .spinner-container {
+            text-align: center;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 20px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ff6b00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            color: #333;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0;
+        }
+        .page-btn {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .page-btn.active {
+            background: #ff6b00;
+            color: white;
+            border-color: #ff6b00;
+        }
+    </style>
 </head>
 <body>
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="loading-spinner">
+
+<!-- ============== LOADING OVERLAY ============== -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner-container">
         <div class="spinner"></div>
+        <div class="loading-text">Loading KUKU YETU...</div>
     </div>
+</div>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="header-top">
-            <div class="container">
-                <div class="header-left">
-                    <button class="menu-toggle" id="menuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="logo">
-                        <h1>KUKU YETU</h1>
-                    </div>
-                </div>
-                <div class="header-right">
-                    <button class="notification-btn" id="notificationBtn">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge" id="notificationBadge">0</span>
-                    </button>
-                    <a href="#" class="whatsapp-btn" id="whatsappBtn">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
-                    <a href="#" class="support-btn" id="supportBtn">
-                        <i class="fas fa-headset"></i>
-                    </a>
-                </div>
-            </div>
+<!-- ============== SIDE NAVIGATION ============== -->
+<div class="side-nav" id="sideNav">
+    <div class="side-nav-header">
+        <h3>Menu</h3>
+        <i class="fas fa-times close-nav" onclick="toggleSideNav()"></i>
+    </div>
+    <div class="side-nav-content">
+        <div class="side-nav-section">
+            <h4>Categories</h4>
+            <ul class="category-list">
+                <li onclick="filterProducts('broilers')"><i class="fas fa-drumstick-bite"></i> Broilers</li>
+                <li onclick="filterProducts('layers')"><i class="fas fa-egg"></i> Layers</li>
+                <li onclick="filterProducts('eggs')"><i class="fas fa-egg"></i> Eggs</li>
+                <li onclick="filterProducts('chicks')"><i class="fas fa-seedling"></i> Chicks</li>
+            </ul>
         </div>
+        <div class="side-nav-section">
+            <h4>Support</h4>
+            <ul>
+                <li onclick="openWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Channel</li>
+                <li onclick="callSupport()"><i class="fas fa-headset"></i> Support Center</li>
+            </ul>
+        </div>
+    </div>
+</div>
 
-        <!-- Navigation Menu (Hidden by default) -->
-        <nav class="main-nav" id="mainNav">
-            <div class="container">
-                <ul class="nav-links">
-                    <li><a href="#" data-filter="all">All Products</a></li>
-                    <li><a href="#" data-filter="broilers">Broilers</a></li>
-                    <li><a href="#" data-filter="layers">Layers</a></li>
-                    <li><a href="#" data-filter="eggs">Eggs</a></li>
-                    <li><a href="#" data-filter="chicks">Chicks</a></li>
-                </ul>
-            </div>
-        </nav>
+<!-- ============== NOTIFICATION PANEL ============== -->
+<div class="notification-panel" id="notificationPanel">
+    <div class="notification-header">
+        <h3>Notifications</h3>
+        <i class="fas fa-times close-notification" onclick="toggleNotification()"></i>
+    </div>
+    <div class="notification-list" id="notificationList">
+        <!-- Notifications loaded dynamically -->
+    </div>
+</div>
 
-        <!-- Search Bar -->
-        <div class="search-bar">
-            <div class="container">
-                <div class="search-container">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Search products by name, category, or ID...">
-                </div>
-            </div>
+<!-- ============== MAIN CONTENT ============== -->
+<div class="app-container">
+    
+    <!-- ============== HEADER ============== -->
+    <header>
+        <div class="header-left">
+            <i class="fas fa-bars hamburger" onclick="toggleSideNav()"></i>
+            <h1 class="logo">KUKU YETU</h1>
+        </div>
+        <div class="header-right">
+            <i class="fas fa-bell notification-icon" onclick="toggleNotification()"></i>
+            <span class="notification-badge" id="notificationBadge">0</span>
+            <i class="fas fa-whatsapp whatsapp-icon" onclick="openWhatsApp()"></i>
+            <i class="fas fa-headset support-icon" onclick="callSupport()"></i>
         </div>
     </header>
 
-    <!-- Notification Panel -->
-    <div class="notification-panel" id="notificationPanel">
-        <div class="notification-header">
-            <h3>Notifications</h3>
-            <button class="close-btn" id="closeNotifications"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="notification-list" id="notificationList">
-            <!-- Notifications will be loaded here -->
+    <!-- ============== SEARCH SECTION ============== -->
+    <div class="search-section">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search products by name or ID..." onkeyup="searchProducts()">
         </div>
     </div>
 
-    <!-- Side Menu -->
-    <div class="side-menu" id="sideMenu">
-        <div class="side-menu-header">
-            <h3>Menu</h3>
-            <button class="close-btn" id="closeMenu"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="side-menu-content">
-            <div class="menu-section">
-                <h4>Filters</h4>
-                <div class="filter-options">
-                    <label><input type="checkbox" value="broilers"> Broilers</label>
-                    <label><input type="checkbox" value="layers"> Layers</label>
-                    <label><input type="checkbox" value="eggs"> Eggs</label>
-                    <label><input type="checkbox" value="chicks"> Chicks</label>
-                </div>
-            </div>
-            <div class="menu-section">
-                <h4>Quick Links</h4>
-                <ul>
-                    <li><a href="#" data-page="home">Home</a></li>
-                    <li><a href="#" data-page="categories">Categories</a></li>
-                    <li><a href="#" data-page="cart">Cart</a></li>
-                    <li><a href="#" data-page="favorites">Favorites</a></li>
-                    <li><a href="#" data-page="about">About</a></li>
-                    <li><a href="#" data-page="profile">Profile</a></li>
-                </ul>
-            </div>
-        </div>
+    <!-- ============== CATEGORIES FILTER ============== -->
+    <div class="categories-filter">
+        <button class="filter-btn active" onclick="filterProducts('all')">All</button>
+        <button class="filter-btn" onclick="filterProducts('broilers')">Broilers</button>
+        <button class="filter-btn" onclick="filterProducts('layers')">Layers</button>
+        <button class="filter-btn" onclick="filterProducts('eggs')">Eggs</button>
+        <button class="filter-btn" onclick="filterProducts('chicks')">Chicks</button>
     </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <!-- Products Grid -->
-            <div class="products-grid" id="productsGrid">
-                <!-- Products will be loaded here -->
-            </div>
-        </div>
-    </main>
+    <!-- ============== PRODUCTS GRID ============== -->
+    <div class="products-grid" id="productsGrid">
+        <!-- Products loaded dynamically -->
+    </div>
 
-    <!-- Footer Navigation -->
-    <footer class="footer-nav">
-        <div class="container">
-            <div class="footer-icons">
-                <button class="footer-btn" data-page="home">
-                    <i class="fas fa-home"></i>
-                    <span>Home</span>
-                </button>
-                <button class="footer-btn" data-page="categories">
-                    <i class="fas fa-th-large"></i>
-                    <span>Categories</span>
-                </button>
-                <button class="footer-btn" data-page="cart" id="cartBtn">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Cart</span>
-                    <span class="badge" id="cartBadge">0</span>
-                </button>
-                <button class="footer-btn" data-page="favorites">
-                    <i class="fas fa-heart"></i>
-                    <span>Favorites</span>
-                </button>
-                <button class="footer-btn" data-page="about">
-                    <i class="fas fa-info-circle"></i>
-                    <span>About</span>
-                </button>
-                <button class="footer-btn" data-page="profile">
-                    <i class="fas fa-user"></i>
-                    <span>Profile</span>
-                </button>
-            </div>
-        </div>
-    </footer>
+    <!-- ============== PAGINATION ============== -->
+    <div id="pagination" class="pagination"></div>
 
-    <!-- Product Modal -->
-    <div class="modal" id="productModal">
+    <!-- ============== PRODUCT MODAL ============== -->
+    <div class="product-modal" id="productModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Product Details</h2>
-                <button class="close-modal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body" id="productModalBody">
-                <!-- Product details will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Cart Modal -->
-    <div class="modal" id="cartModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Shopping Cart</h2>
-                <button class="close-modal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body" id="cartModalBody">
-                <!-- Cart will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Login Modal -->
-    <div class="modal" id="loginModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Login / Register</h2>
-                <button class="close-modal"><i class="fas fa-times"></i></button>
-            </div>
+            <span class="close-modal" onclick="closeProductModal()">&times;</span>
             <div class="modal-body">
-                <div class="auth-tabs">
-                    <button class="tab-btn active" data-tab="login">Login</button>
-                    <button class="tab-btn" data-tab="register">Register</button>
+                <div class="modal-image-section">
+                    <div class="image-slider" id="imageSlider">
+                        <!-- Images loaded dynamically -->
+                    </div>
+                    <div class="slider-dots" id="sliderDots"></div>
                 </div>
-                
-                <!-- Login Form -->
-                <form id="loginForm" class="auth-form active">
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="loginEmail" required>
+                <div class="modal-details">
+                    <h2 id="modalTitle"></h2>
+                    <div class="modal-prices">
+                        <span class="current-price" id="modalPrice"></span>
+                        <span class="old-price" id="modalOldPrice"></span>
                     </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="loginPassword" required>
+                    <div class="modal-rating" id="modalRating"></div>
+                    <p class="modal-description" id="modalDescription"></p>
+                    <div class="modal-actions">
+                        <button class="save-btn" onclick="toggleFavorite()">
+                            <i class="far fa-heart"></i> Save for later
+                        </button>
+                        <button class="checkout-btn" onclick="proceedToCheckout()">
+                            Proceed to Checkout
+                        </button>
                     </div>
-                    <button type="submit" class="btn-primary">Login</button>
-                </form>
-
-                <!-- Register Form -->
-                <form id="registerForm" class="auth-form">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="registerName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="registerEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" id="registerPhone" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="registerPassword" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn-primary">Register</button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="toast-container" id="toastContainer"></div>
+    <!-- ============== AUTH MODAL ============== -->
+    <div class="auth-modal" id="authModal">
+        <div class="auth-content">
+            <span class="close-auth" onclick="closeAuthModal()">&times;</span>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="auth-submit">Login</button>
+            </form>
 
-    <script src="js/api.js"></script>
-    <script src="js/main.js"></script>
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="regFullName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="regPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" required minlength="6">
+                </div>
+                <button type="submit" class="auth-submit">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============== CART MODAL ============== -->
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-content">
+            <span class="close-cart" onclick="closeCartModal()">&times;</span>
+            <h2>Your Cart</h2>
+            <div class="cart-items" id="cartItems">
+                <!-- Cart items loaded dynamically -->
+            </div>
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">KSh 0</span>
+            </div>
+            <div class="cart-location">
+                <h3>Delivery Location</h3>
+                <div class="location-input">
+                    <input type="text" id="locationInput" placeholder="Click to get location" readonly onclick="getUserLocation()">
+                    <i class="fas fa-location-dot" onclick="getUserLocation()"></i>
+                </div>
+                <textarea id="specificAddress" placeholder="Specific address or delivery notes"></textarea>
+            </div>
+            <div class="cart-actions">
+                <button class="confirm-order" onclick="confirmOrder()">Confirm Order (Pay on Delivery)</button>
+                <button class="whatsapp-order" onclick="sendOrderViaWhatsApp()">
+                    <i class="fab fa-whatsapp"></i> Confirm via WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============== BOTTOM NAVIGATION ============== -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="window.location.reload()">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="showCategories()">
+            <i class="fas fa-th-large"></i>
+            <span>Categories</span>
+        </div>
+        <div class="nav-item" onclick="openCart()">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Cart</span>
+            <span class="cart-badge" id="cartBadge">0</span>
+        </div>
+        <div class="nav-item" onclick="showFavorites()">
+            <i class="fas fa-heart"></i>
+            <span>Favorites</span>
+        </div>
+        <div class="nav-item" onclick="showAbout()">
+            <i class="fas fa-info-circle"></i>
+            <span>About</span>
+        </div>
+        <div class="nav-item" onclick="showProfile()">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </div>
+    </nav>
+</div>
+
+<!-- ============== SCRIPTS ============== -->
+<!-- Load in correct order -->
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+
+<!-- ============== FALLBACKS AND SAFEGUARDS ============== -->
+<script>
+    (function() {
+        // Ensure all required functions exist (prevents "not defined" errors)
+        const requiredFunctions = [
+            'filterProducts', 'toggleSideNav', 'toggleNotification', 'openWhatsApp', 
+            'callSupport', 'showCategories', 'openCart', 'closeCartModal', 
+            'showFavorites', 'showAbout', 'showProfile', 'addToCart', 
+            'proceedToCheckout', 'confirmOrder', 'getUserLocation', 
+            'sendOrderViaWhatsApp', 'logout', 'openAuthModal', 'closeAuthModal',
+            'switchAuthTab', 'handleLogin', 'handleRegister', 'openProductModal',
+            'closeProductModal', 'searchProducts'
+        ];
+        
+        requiredFunctions.forEach(funcName => {
+            if (typeof window[funcName] !== 'function') {
+                console.warn(`Function ${funcName} not loaded yet, creating placeholder`);
+                window[funcName] = function() {
+                    console.log(`Placeholder ${funcName} called - waiting for main.js`);
+                };
+            }
+        });
+        
+        // Hide loading overlay after timeout (safety)
+        setTimeout(function() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay && overlay.style.display !== 'none') {
+                console.log('Force hiding loading overlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 500);
+            }
+        }, 5000);
+        
+        // Log when page is ready
+        console.log(' loaded, waiting for scripts...');
+    })();
+</script>
+
+<!-- ============== ADDITIONAL SAFETY FOR SEARCH ============== -->
+<script>
+    // Ensure search function works even if main.js hasn't loaded yet
+    window.searchProducts = window.searchProducts || function() {
+        console.log('Search triggered');
+        const searchTerm = document.getElementById('searchInput')?.value;
+        // Dispatch custom event that main.js can listen for
+        const event = new CustomEvent('searchProducts', { detail: { search: searchTerm } });
+        document.dispatchEvent(event);
+    };
+</script>
+
 </body>
 </html>
