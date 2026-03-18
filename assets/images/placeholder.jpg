@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="canvas" width="300" height="200"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Fill background
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, 300, 200);
+    
+    // Draw border
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, 298, 198);
+    
+    // Draw text
+    ctx.fillStyle = '#999';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No Image', 150, 100);
+    
+    // Save as data URL
+    const dataURL = canvas.toDataURL('image/png');
+    console.log('Placeholder image data URL:', dataURL);
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.download = 'placeholder.png';
+    link.href = dataURL;
+    link.textContent = 'Download Placeholder';
+    document.body.appendChild(link);
+</script>
+</body>
+</html>
