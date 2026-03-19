@@ -1,5 +1,3 @@
-// Admin specific JavaScript
-
 let currentOrders = [];
 let currentProducts = [];
 let currentEditingProduct = null;
