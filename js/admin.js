@@ -1,3 +1,15 @@
+// ============== API CONFIGURATION ==============
+const API_BASE_URL = 'https://kuku-backend-ntr4.onrender.com';
+
+// Override fetch to use the correct API base
+const originalFetch = window.fetch;
+window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.startsWith('/api')) {
+        url = API_BASE_URL + url;
+        console.log('👑 Admin fetching from:', url);
+    }
+    return originalFetch(url, options);
+};
 let currentOrders = [];
 let currentProducts = [];
 let currentEditingProduct = null;
