@@ -15,8 +15,8 @@ let currentProducts = [];
 let currentEditingProduct = null;
 let imagesToRemove = [];
 
-// API Base URL
-const API_BASE_URL = window.location.hostname === 'localhost' 
+// API Base URLconst 
+API_BASE_URL = 'https://kuku-backend-ntr4.onrender.com';
     ? 'http://localhost:5000/api' 
     : 'https://kuku-backend-ntr4.onrender.com/api';
 
