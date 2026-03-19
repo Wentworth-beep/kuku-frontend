@@ -8,74 +8,15 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Custom CSS -->
+    <!-- Custom CSS - CORRECT PATH -->
     <link rel="stylesheet" href="css/style.css">
     
-    <!-- Favicon - prevents 404 errors -->
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐔</text></svg>">
-    
-    <!-- Preconnect to backend for faster loading -->
-    <link rel="preconnect" href="https://kuku-backend-ntr4.onrender.com">
-    
-    <style>
-        /* Quick inline styles to prevent layout shift */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.98);
-            z-index: 99999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease;
-        }
-        .spinner-container {
-            text-align: center;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 20px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #ff6b00;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .loading-text {
-            color: #333;
-            font-size: 18px;
-            font-weight: 500;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin: 30px 0;
-        }
-        .page-btn {
-            padding: 8px 15px;
-            border: 1px solid #ddd;
-            background: white;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .page-btn.active {
-            background: #ff6b00;
-            color: white;
-            border-color: #ff6b00;
-        }
-    </style>
 </head>
 <body>
 
-<!-- ============== LOADING OVERLAY ============== -->
+<!-- Loading Overlay -->
 <div id="loadingOverlay" class="loading-overlay">
     <div class="spinner-container">
         <div class="spinner"></div>
@@ -83,7 +24,7 @@
     </div>
 </div>
 
-<!-- ============== SIDE NAVIGATION ============== -->
+<!-- Side Navigation -->
 <div class="side-nav" id="sideNav">
     <div class="side-nav-header">
         <h3>Menu</h3>
@@ -109,21 +50,20 @@
     </div>
 </div>
 
-<!-- ============== NOTIFICATION PANEL ============== -->
+<!-- Notification Panel -->
 <div class="notification-panel" id="notificationPanel">
     <div class="notification-header">
         <h3>Notifications</h3>
         <i class="fas fa-times close-notification" onclick="toggleNotification()"></i>
     </div>
     <div class="notification-list" id="notificationList">
-        <!-- Notifications loaded dynamically -->
+        <!-- Notifications will be loaded here -->
     </div>
 </div>
 
-<!-- ============== MAIN CONTENT ============== -->
+<!-- Main Content -->
 <div class="app-container">
-    
-    <!-- ============== HEADER ============== -->
+    <!-- Header -->
     <header>
         <div class="header-left">
             <i class="fas fa-bars hamburger" onclick="toggleSideNav()"></i>
@@ -137,7 +77,7 @@
         </div>
     </header>
 
-    <!-- ============== SEARCH SECTION ============== -->
+    <!-- Search Section -->
     <div class="search-section">
         <div class="search-container">
             <i class="fas fa-search"></i>
@@ -145,7 +85,7 @@
         </div>
     </div>
 
-    <!-- ============== CATEGORIES FILTER ============== -->
+    <!-- Categories Filter -->
     <div class="categories-filter">
         <button class="filter-btn active" onclick="filterProducts('all')">All</button>
         <button class="filter-btn" onclick="filterProducts('broilers')">Broilers</button>
@@ -154,22 +94,22 @@
         <button class="filter-btn" onclick="filterProducts('chicks')">Chicks</button>
     </div>
 
-    <!-- ============== PRODUCTS GRID ============== -->
+    <!-- Products Grid -->
     <div class="products-grid" id="productsGrid">
-        <!-- Products loaded dynamically -->
+        <!-- Products will be loaded here -->
     </div>
 
-    <!-- ============== PAGINATION ============== -->
+    <!-- Pagination -->
     <div id="pagination" class="pagination"></div>
 
-    <!-- ============== PRODUCT MODAL ============== -->
+    <!-- Product Modal -->
     <div class="product-modal" id="productModal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeProductModal()">&times;</span>
             <div class="modal-body">
                 <div class="modal-image-section">
                     <div class="image-slider" id="imageSlider">
-                        <!-- Images loaded dynamically -->
+                        <!-- Images will be loaded here -->
                     </div>
                     <div class="slider-dots" id="sliderDots"></div>
                 </div>
@@ -194,7 +134,7 @@
         </div>
     </div>
 
-    <!-- ============== AUTH MODAL ============== -->
+    <!-- Login/Register Modal -->
     <div class="auth-modal" id="authModal">
         <div class="auth-content">
             <span class="close-auth" onclick="closeAuthModal()">&times;</span>
@@ -239,13 +179,13 @@
         </div>
     </div>
 
-    <!-- ============== CART MODAL ============== -->
+    <!-- Cart Modal -->
     <div class="cart-modal" id="cartModal">
         <div class="cart-content">
             <span class="close-cart" onclick="closeCartModal()">&times;</span>
             <h2>Your Cart</h2>
             <div class="cart-items" id="cartItems">
-                <!-- Cart items loaded dynamically -->
+                <!-- Cart items will be loaded here -->
             </div>
             <div class="cart-total">
                 <span>Total:</span>
@@ -268,7 +208,7 @@
         </div>
     </div>
 
-    <!-- ============== BOTTOM NAVIGATION ============== -->
+    <!-- Bottom Navigation -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="window.location.reload()">
             <i class="fas fa-home"></i>
@@ -298,61 +238,23 @@
     </nav>
 </div>
 
-<!-- ============== SCRIPTS ============== -->
-<!-- Load in correct order -->
+<!-- Scripts -->
 <script src="js/api.js"></script>
 <script src="js/main.js"></script>
 
-<!-- ============== FALLBACKS AND SAFEGUARDS ============== -->
+<!-- Fallback to hide loading overlay -->
 <script>
-    (function() {
-        // Ensure all required functions exist (prevents "not defined" errors)
-        const requiredFunctions = [
-            'filterProducts', 'toggleSideNav', 'toggleNotification', 'openWhatsApp', 
-            'callSupport', 'showCategories', 'openCart', 'closeCartModal', 
-            'showFavorites', 'showAbout', 'showProfile', 'addToCart', 
-            'proceedToCheckout', 'confirmOrder', 'getUserLocation', 
-            'sendOrderViaWhatsApp', 'logout', 'openAuthModal', 'closeAuthModal',
-            'switchAuthTab', 'handleLogin', 'handleRegister', 'openProductModal',
-            'closeProductModal', 'searchProducts'
-        ];
-        
-        requiredFunctions.forEach(funcName => {
-            if (typeof window[funcName] !== 'function') {
-                console.warn(`Function ${funcName} not loaded yet, creating placeholder`);
-                window[funcName] = function() {
-                    console.log(`Placeholder ${funcName} called - waiting for main.js`);
-                };
-            }
-        });
-        
-        // Hide loading overlay after timeout (safety)
+    window.addEventListener('load', function() {
         setTimeout(function() {
             const overlay = document.getElementById('loadingOverlay');
-            if (overlay && overlay.style.display !== 'none') {
-                console.log('Force hiding loading overlay');
+            if (overlay) {
                 overlay.style.opacity = '0';
                 setTimeout(() => {
                     overlay.style.display = 'none';
                 }, 500);
             }
-        }, 5000);
-        
-        // Log when page is ready
-        console.log(' loaded, waiting for scripts...');
-    })();
-</script>
-
-<!-- ============== ADDITIONAL SAFETY FOR SEARCH ============== -->
-<script>
-    // Ensure search function works even if main.js hasn't loaded yet
-    window.searchProducts = window.searchProducts || function() {
-        console.log('Search triggered');
-        const searchTerm = document.getElementById('searchInput')?.value;
-        // Dispatch custom event that main.js can listen for
-        const event = new CustomEvent('searchProducts', { detail: { search: searchTerm } });
-        document.dispatchEvent(event);
-    };
+        }, 2000);
+    });
 </script>
 
 </body>
