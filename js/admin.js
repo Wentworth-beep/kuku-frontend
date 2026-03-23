@@ -1,12 +1,17 @@
-// Admin specific JavaScript
+// ============== KUKU YETU ADMIN PANEL ==============
+// Complete working admin panel with order editing
 
+let adminToken = null;
 let currentOrders = [];
 let currentProducts = [];
 let currentEditingProduct = null;
+let currentEditingOrder = null;
 let imagesToRemove = [];
 
-// ============= INITIALIZATION =============
+// ============== INITIALIZATION ==============
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('👑 Admin panel initializing...');
+    
     // Add data URI favicon to prevent 404
     if (!document.querySelector('link[rel="icon"]')) {
         const favicon = document.createElement('link');
@@ -16,22 +21,131 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     const adminToken = localStorage.getItem('adminToken');
+    console.log('🔑 Token exists:', !!adminToken);
+    
     if (adminToken) {
-        showAdminDashboard();
-        loadDashboardData();
+        verifyAdminToken(adminToken);
     } else {
-        showAdminLogin();
+        showLoginForm();
     }
 
     setupAdminEventListeners();
 });
 
-// ============= SETUP EVENT LISTENERS =============
+// Verify admin token
+async function verifyAdminToken(token) {
+    try {
+        const response = await fetch('/api/auth/verify', {
+            headers: { 'x-auth-token': token }
+        });
+        const data = await response.json();
+        
+        if (data.user && data.user.is_admin) {
+            adminToken = token;
+            console.log('✅ Admin verified:', data.user.email);
+            showDashboard();
+            loadDashboardData();
+        } else {
+            console.log('❌ Invalid admin token');
+            localStorage.removeItem('adminToken');
+            showLoginForm();
+        }
+    } catch (error) {
+        console.error('Token verification error:', error);
+        localStorage.removeItem('adminToken');
+        showLoginForm();
+    }
+}
+
+// ============== UI FUNCTIONS ==============
+function showLoginForm() {
+    const loginDiv = document.getElementById('adminLogin');
+    const dashboardDiv = document.getElementById('adminDashboard');
+    if (loginDiv) loginDiv.style.display = 'flex';
+    if (dashboardDiv) dashboardDiv.style.display = 'none';
+    
+    const passwordField = document.getElementById('adminPassword');
+    if (passwordField) passwordField.value = '';
+}
+
+function showDashboard() {
+    const loginDiv = document.getElementById('adminLogin');
+    const dashboardDiv = document.getElementById('adminDashboard');
+    if (loginDiv) loginDiv.style.display = 'none';
+    if (dashboardDiv) dashboardDiv.style.display = 'block';
+}
+
+// ============== ADMIN LOGIN ==============
+async function adminLogin(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    const loginBtn = event.target.querySelector('button[type="submit"]');
+    
+    if (!email || !password) {
+        showToast('Please enter email and password', 'error');
+        return;
+    }
+    
+    try {
+        if (loginBtn) {
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+        }
+        
+        console.log('🔐 Admin login attempt:', email);
+        
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const result = await response.json();
+        console.log('📡 Login response:', result);
+        
+        // Check if login was successful and user is admin
+        if (result.token && result.user) {
+            // Check if user is admin (is_admin flag)
+            if (result.user.is_admin === true || result.user.email === 'admin@kukuyetu.com') {
+                localStorage.setItem('adminToken', result.token);
+                localStorage.setItem('admin', JSON.stringify(result.user));
+                adminToken = result.token;
+                showToast('Login successful!', 'success');
+                showDashboard();
+                loadDashboardData();
+            } else {
+                showToast('Access denied. Admin privileges required.', 'error');
+            }
+        } else {
+            showToast(result.message || 'Invalid credentials', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login failed: ' + error.message, 'error');
+    } finally {
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
+        }
+    }
+}
+
+function adminLogout() {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('admin');
+    adminToken = null;
+    showToast('Logged out successfully', 'success');
+    showLoginForm();
+}
+
+// ============== EVENT LISTENERS ==============
 function setupAdminEventListeners() {
     // Admin login
     const loginForm = document.getElementById('adminLoginForm');
     if (loginForm) {
-        loginForm.addEventListener('submit', handleAdminLogin);
+        loginForm.addEventListener('submit', adminLogin);
     }
 
     // Tab switching
@@ -48,6 +162,7 @@ function setupAdminEventListeners() {
             document.getElementById('addProductModal')?.classList.remove('active');
             document.getElementById('editProductModal')?.classList.remove('active');
             document.getElementById('orderDetailsModal')?.classList.remove('active');
+            document.getElementById('editOrderModal')?.classList.remove('active');
         });
     });
 
@@ -63,6 +178,12 @@ function setupAdminEventListeners() {
         editProductForm.addEventListener('submit', handleEditProduct);
     }
 
+    // Edit order form
+    const editOrderForm = document.getElementById('editOrderForm');
+    if (editOrderForm) {
+        editOrderForm.addEventListener('submit', handleEditOrder);
+    }
+
     // Image preview
     const productImages = document.getElementById('productImages');
     if (productImages) {
@@ -75,7 +196,7 @@ function setupAdminEventListeners() {
     }
 }
 
-// ============= TAB MANAGEMENT =============
+// ============== TAB MANAGEMENT ==============
 function showTab(tab) {
     console.log('showTab called with:', tab);
     
@@ -107,77 +228,10 @@ function showTab(tab) {
     }
 }
 
-// ============= AUTHENTICATION =============
-async function handleAdminLogin(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('adminEmail').value;
-    const password = document.getElementById('adminPassword').value;
-
-    console.log('Attempting login with:', email);
-
-    showLoading();
-    try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await response.json();
-        console.log('Login response:', data);
-
-        if (response.ok && data.success && data.token) {
-            localStorage.setItem('adminToken', data.token);
-            localStorage.setItem('admin', JSON.stringify(data.user));
-            showAdminDashboard();
-            loadDashboardData();
-            showToast('Login successful!', 'success');
-            // Clear password field for security
-            document.getElementById('adminPassword').value = '';
-        } else {
-            showToast(data.message || 'Login failed: Invalid credentials', 'error');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showToast('Login failed: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function showAdminLogin() {
-    const loginDiv = document.getElementById('adminLogin');
-    const dashboardDiv = document.getElementById('adminDashboard');
-    if (loginDiv) loginDiv.style.display = 'flex';
-    if (dashboardDiv) dashboardDiv.style.display = 'none';
-    
-    // Clear password field for security
-    const passwordField = document.getElementById('adminPassword');
-    if (passwordField) passwordField.value = '';
-}
-
-function showAdminDashboard() {
-    const loginDiv = document.getElementById('adminLogin');
-    const dashboardDiv = document.getElementById('adminDashboard');
-    if (loginDiv) loginDiv.style.display = 'none';
-    if (dashboardDiv) dashboardDiv.style.display = 'block';
-}
-
-function adminLogout() {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('admin');
-    showAdminLogin();
-    showToast('Logged out successfully', 'success');
-}
-
-// ============= DASHBOARD FUNCTIONS =============
+// ============== DASHBOARD FUNCTIONS ==============
 async function loadDashboardData() {
     showLoading();
     try {
-        // Load orders (with error handling)
         let orders = [];
         try {
             orders = await getAllOrders();
@@ -187,7 +241,6 @@ async function loadDashboardData() {
         }
         currentOrders = orders;
 
-        // Load products
         let products = [];
         try {
             products = await getProducts();
@@ -197,10 +250,7 @@ async function loadDashboardData() {
         }
         currentProducts = products;
 
-        // Update stats
         updateDashboardStats(orders, products);
-        
-        // Load recent orders
         loadRecentOrders(orders.slice(0, 10));
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
@@ -213,6 +263,9 @@ async function loadDashboardData() {
 function updateDashboardStats(orders, products) {
     const totalOrders = orders.length;
     const pendingOrders = orders.filter(o => o.status === 'pending').length;
+    const confirmedOrders = orders.filter(o => o.status === 'confirmed').length;
+    const shippedOrders = orders.filter(o => o.status === 'shipped').length;
+    const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
     const completedOrders = orders.filter(o => o.status === 'completed').length;
 
     const totalOrdersEl = document.getElementById('totalOrders');
@@ -224,9 +277,17 @@ function updateDashboardStats(orders, products) {
     if (pendingOrdersEl) pendingOrdersEl.textContent = pendingOrders;
     if (completedOrdersEl) completedOrdersEl.textContent = completedOrders;
     if (totalProductsEl) totalProductsEl.textContent = products.length;
+    
+    // Optional: add more stats if elements exist
+    const confirmedOrdersEl = document.getElementById('confirmedOrders');
+    const shippedOrdersEl = document.getElementById('shippedOrders');
+    const deliveredOrdersEl = document.getElementById('deliveredOrders');
+    if (confirmedOrdersEl) confirmedOrdersEl.textContent = confirmedOrders;
+    if (shippedOrdersEl) shippedOrdersEl.textContent = shippedOrders;
+    if (deliveredOrdersEl) deliveredOrdersEl.textContent = deliveredOrders;
 }
 
-// ============= PRODUCT FUNCTIONS =============
+// ============== PRODUCT FUNCTIONS ==============
 async function loadProducts() {
     showLoading();
     try {
@@ -245,7 +306,6 @@ async function loadProducts() {
 function getImageUrl(imagePath) {
     if (!imagePath) return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
     if (imagePath.startsWith('http')) return imagePath;
-    // Use the full backend URL for images
     const backendBase = 'https://kuku-backend-ntr4.onrender.com';
     if (imagePath.startsWith('/')) {
         return backendBase + imagePath;
@@ -258,7 +318,8 @@ function renderProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td></tr>';
+        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td>';
+
         return;
     }
 
@@ -301,11 +362,12 @@ function renderProductsTable(products) {
     }).join('');
 }
 
-// ============= ORDER FUNCTIONS =============
+// ============== ORDER FUNCTIONS ==============
 async function loadAllOrders() {
     showLoading();
     try {
         const orders = await getAllOrders();
+        currentOrders = orders;
         renderAllOrdersTable(orders);
     } catch (error) {
         console.error('Failed to load orders:', error);
@@ -336,7 +398,7 @@ function renderAllOrdersTable(orders) {
 
         return `
             <tr>
-                <td>${order.order_id || 'N/A'}</td>
+                <td>${order.order_id || order.id || 'N/A'}</td>
                 <td>${order.customer_name || 'N/A'}</td>
                 <td>${order.phone || 'N/A'}</td>
                 <td>${order.location || 'N/A'}</td>
@@ -345,6 +407,9 @@ function renderAllOrdersTable(orders) {
                 <td>
                     <button class="btn-view" onclick="viewOrderDetails(${order.id})" style="margin-right: 5px; background: #4caf50;" title="View Details">
                         <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-view" onclick="openEditOrderModal(${order.id})" style="margin-right: 5px; background: #ff9800;" title="Edit Order">
+                        <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-view" onclick="deleteOrder(${order.id})" style="background: #f44336;" title="Delete Order">
                         <i class="fas fa-trash"></i>
@@ -375,7 +440,7 @@ function loadRecentOrders(orders) {
 
         return `
             <tr>
-                <td>${order.order_id || 'N/A'}</td>
+                <td>${order.order_id || order.id || 'N/A'}</td>
                 <td>${order.customer_name || 'N/A'}</td>
                 <td>Ksh ${order.total_amount || 0}</td>
                 <td><span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></td>
@@ -383,6 +448,9 @@ function loadRecentOrders(orders) {
                 <td>
                     <button class="btn-view" onclick="viewOrderDetails(${order.id})" style="margin-right: 5px; background: #4caf50;" title="View Details">
                         <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-view" onclick="openEditOrderModal(${order.id})" style="margin-right: 5px; background: #ff9800;" title="Edit Order">
+                        <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-view" onclick="deleteOrder(${order.id})" style="background: #f44336;" title="Delete Order">
                         <i class="fas fa-trash"></i>
@@ -393,7 +461,236 @@ function loadRecentOrders(orders) {
     }).join('');
 }
 
-// ============= DELETE ORDER FUNCTION =============
+// ============== EDIT ORDER FUNCTIONS ==============
+function openEditOrderModal(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) {
+        showToast('Order not found', 'error');
+        return;
+    }
+    
+    currentEditingOrder = order;
+    
+    // Populate edit order form
+    document.getElementById('editOrderId').value = order.id;
+    document.getElementById('editOrderNumber').value = order.order_id || order.id;
+    document.getElementById('editCustomerName').value = order.customer_name || '';
+    document.getElementById('editCustomerPhone').value = order.phone || '';
+    document.getElementById('editCustomerLocation').value = order.location || '';
+    document.getElementById('editCustomerAddress').value = order.specific_address || '';
+    document.getElementById('editOrderStatus').value = order.status || 'pending';
+    
+    // Format products list for display
+    let products = [];
+    try {
+        products = typeof order.products === 'string' ? JSON.parse(order.products) : (order.products || []);
+    } catch (e) {
+        products = [];
+    }
+    
+    const productsList = document.getElementById('editOrderProducts');
+    if (productsList) {
+        productsList.innerHTML = products.map(p => `
+            <div class="order-product-item" style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
+                <span>${p.title || 'Product'}</span>
+                <span>${p.quantity || 1} x Ksh ${p.price || 0}</span>
+                <span><strong>Ksh ${((p.price || 0) * (p.quantity || 1)).toFixed(2)}</strong></span>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById('editOrderTotal').value = parseFloat(order.total_amount || 0).toFixed(2);
+    
+    document.getElementById('editOrderModal').classList.add('active');
+}
+
+async function handleEditOrder(event) {
+    event.preventDefault();
+    
+    const orderId = document.getElementById('editOrderId').value;
+    const orderData = {
+        customer_name: document.getElementById('editCustomerName').value,
+        phone: document.getElementById('editCustomerPhone').value,
+        location: document.getElementById('editCustomerLocation').value,
+        specific_address: document.getElementById('editCustomerAddress').value,
+        status: document.getElementById('editOrderStatus').value
+    };
+    
+    if (!orderData.customer_name || !orderData.phone || !orderData.location) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`/api/orders/${orderId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token': token
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showToast('Order updated successfully!', 'success');
+            document.getElementById('editOrderModal').classList.remove('active');
+            loadAllOrders();
+            loadDashboardData();
+        } else {
+            showToast(result.message || 'Failed to update order', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating order:', error);
+        showToast('Failed to update order: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============== UPDATE ORDER STATUS ==============
+async function updateOrderStatus(orderId, status) {
+    if (!confirm(`Are you sure you want to mark this order as ${status}?`)) {
+        return;
+    }
+
+    showLoading();
+    try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`/api/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token': token
+            },
+            body: JSON.stringify({ status, deliveryStatus: status })
+        });
+
+        if (response.status === 404) {
+            showToast('Order not found', 'error');
+            return;
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            showToast('Authentication failed. Please login again.', 'error');
+            adminLogout();
+            return;
+        }
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            document.getElementById('orderDetailsModal')?.classList.remove('active');
+            loadAllOrders();
+            loadDashboardData();
+            showToast(`Order marked as ${status}`, 'success');
+        } else {
+            showToast(result.message || 'Failed to update order', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to update order status:', error);
+        showToast('Failed to update order status', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============== VIEW ORDER DETAILS ==============
+async function viewOrderDetails(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) {
+        showToast('Order not found', 'error');
+        return;
+    }
+    
+    renderOrderDetails(order);
+    document.getElementById('orderDetailsModal')?.classList.add('active');
+}
+
+function renderOrderDetails(order) {
+    const modalBody = document.getElementById('orderDetailsBody');
+    if (!modalBody) return;
+
+    let products = [];
+    try {
+        products = typeof order.products === 'string' ? JSON.parse(order.products) : (order.products || []);
+    } catch (e) {
+        products = [];
+    }
+
+    modalBody.innerHTML = `
+        <div class="order-details">
+            <div class="order-info">
+                <h3>Order Information</h3>
+                <p><strong>Order ID:</strong> ${order.order_id || order.id}</p>
+                <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</p>
+                <p><strong>Status:</strong> <span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></p>
+                <p><strong>Total:</strong> Ksh ${parseFloat(order.total_amount || 0).toFixed(2)}</p>
+            </div>
+
+            <div class="customer-info">
+                <h3>Customer Information</h3>
+                <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
+                <p><strong>Phone:</strong> ${order.phone || 'N/A'}</p>
+                ${order.alternative_phone ? `<p><strong>Alternative Phone:</strong> ${order.alternative_phone}</p>` : ''}
+                <p><strong>Location:</strong> ${order.location || 'N/A'}</p>
+                ${order.specific_address ? `<p><strong>Address:</strong> ${order.specific_address}</p>` : ''}
+            </div>
+
+            <div class="order-items">
+                <h3>Order Items</h3>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${products.map(item => `
+                            <tr>
+                                <td>${item.title || 'N/A'}</td>
+                                <td>${item.quantity || 0}</td>
+                                <td>Ksh ${item.price || 0}</td>
+                                <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>Total</strong></td>
+                            <td><strong>Ksh ${order.total_amount || 0}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="order-actions">
+                <div class="status-update">
+                    <h4>Update Status</h4>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'confirmed')">Confirm Order</button>
+                        <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'shipped')">Order Shipped</button>
+                        <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'delivered')">Order Delivered</button>
+                        <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')">Mark as Completed</button>
+                        <button class="btn-danger" onclick="updateOrderStatus(${order.id}, 'cancelled')">Cancel Order</button>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="btn-secondary" onclick="generateOrderReceipt(${order.id})">Generate Receipt</button>
+                    <button class="btn-danger" onclick="deleteOrder(${order.id})" style="background: #f44336;">Delete Order</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============== DELETE ORDER ==============
 async function deleteOrder(orderId) {
     if (!confirm('⚠️ Are you sure you want to permanently delete this order? This action cannot be undone.')) {
         return;
@@ -404,9 +701,7 @@ async function deleteOrder(orderId) {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'DELETE',
-            headers: {
-                'x-auth-token': token
-            }
+            headers: { 'x-auth-token': token }
         });
 
         if (response.status === 404) {
@@ -425,11 +720,8 @@ async function deleteOrder(orderId) {
         
         if (response.ok && result.success) {
             showToast('✅ Order deleted successfully', 'success');
-            if (document.getElementById('ordersTab')?.classList.contains('active')) {
-                loadAllOrders();
-            } else {
-                loadDashboardData();
-            }
+            loadAllOrders();
+            loadDashboardData();
         } else {
             showToast(result.message || 'Failed to delete order', 'error');
         }
@@ -441,7 +733,113 @@ async function deleteOrder(orderId) {
     }
 }
 
-// ============= ADD PRODUCT FUNCTIONS =============
+// ============== GENERATE RECEIPT ==============
+function generateOrderReceipt(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) {
+        showToast('Order not found', 'error');
+        return;
+    }
+
+    let products = [];
+    try {
+        products = typeof order.products === 'string' ? JSON.parse(order.products) : (order.products || []);
+    } catch (e) {
+        products = [];
+    }
+
+    const receiptWindow = window.open('', '_blank');
+    receiptWindow.document.write(`
+        <html>
+            <head>
+                <title>Order Receipt - KUKU YETU</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .receipt { max-width: 800px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .section { margin: 20px 0; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                    .total { font-weight: bold; font-size: 1.2em; }
+                    .footer { margin-top: 40px; text-align: center; }
+                    .status { display: inline-block; padding: 5px 10px; border-radius: 4px; }
+                    .status.${order.status} { background: ${getStatusColor(order.status)}; color: white; }
+                </style>
+            </head>
+            <body>
+                <div class="receipt">
+                    <div class="header">
+                        <h1>KUKU YETU</h1>
+                        <p>Premium Poultry Products</p>
+                        <h2>Order Receipt</h2>
+                    </div>
+                    
+                    <div class="section">
+                        <h3>Order Details</h3>
+                        <p><strong>Order ID:</strong> ${order.order_id || order.id}</p>
+                        <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</p>
+                        <p><strong>Status:</strong> <span class="status ${order.status || 'pending'}">${order.status || 'pending'}</span></p>
+                    </div>
+                    
+                    <div class="section">
+                        <h3>Customer Information</h3>
+                        <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
+                        <p><strong>Phone:</strong> ${order.phone || 'N/A'}</p>
+                        ${order.alternative_phone ? `<p><strong>Alternative Phone:</strong> ${order.alternative_phone}</p>` : ''}
+                        <p><strong>Location:</strong> ${order.location || 'N/A'}</p>
+                        ${order.specific_address ? `<p><strong>Address:</strong> ${order.specific_address}</p>` : ''}
+                    </div>
+                    
+                    <div class="section">
+                        <h3>Order Items</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${products.map(item => `
+                                    <tr>
+                                        <td>${item.title || 'N/A'}</td>
+                                        <td>${item.quantity || 0}</td>
+                                        <td>Ksh ${item.price || 0}</td>
+                                        <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        <p class="total">Total Amount: Ksh ${order.total_amount || 0}</p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Thank you for choosing KUKU YETU!</p>
+                        <p>For any inquiries, please contact us at support@kukuyetu.com</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+    `);
+    receiptWindow.document.close();
+    receiptWindow.print();
+}
+
+function getStatusColor(status) {
+    switch(status) {
+        case 'pending': return '#ff9800';
+        case 'confirmed': return '#2196f3';
+        case 'shipped': return '#9c27b0';
+        case 'delivered': return '#4caf50';
+        case 'completed': return '#2e7d32';
+        case 'cancelled': return '#f44336';
+        default: return '#999';
+    }
+}
+
+// ============== PRODUCT ADD/EDIT FUNCTIONS ==============
 function openAddProductModal() {
     const modal = document.getElementById('addProductModal');
     const form = document.getElementById('addProductForm');
@@ -450,16 +848,6 @@ function openAddProductModal() {
     if (modal) modal.classList.add('active');
     if (form) form.reset();
     if (preview) preview.innerHTML = '';
-    
-    setTimeout(() => {
-        const textarea = document.getElementById('productDescription');
-        if (textarea) {
-            textarea.removeAttribute('disabled');
-            textarea.removeAttribute('readonly');
-            textarea.style.pointerEvents = 'auto';
-            textarea.style.backgroundColor = '#ffffff';
-        }
-    }, 200);
 }
 
 function handleImagePreview(e) {
@@ -528,9 +916,7 @@ async function handleAddProduct(e) {
         const token = localStorage.getItem('adminToken');
         const response = await fetch('/api/products', {
             method: 'POST',
-            headers: {
-                'x-auth-token': token
-            },
+            headers: { 'x-auth-token': token },
             body: formData
         });
 
@@ -554,7 +940,6 @@ async function handleAddProduct(e) {
     }
 }
 
-// ============= EDIT PRODUCT FUNCTIONS =============
 async function openEditProductModal(productId) {
     showLoading();
     imagesToRemove = [];
@@ -574,30 +959,14 @@ async function openEditProductModal(productId) {
         
         currentEditingProduct = product;
         
-        // Check if edit form elements exist
-        const editProductId = document.getElementById('editProductId');
-        const editProductTitle = document.getElementById('editProductTitle');
-        const editProductPrice = document.getElementById('editProductPrice');
-        const editProductOldPrice = document.getElementById('editProductOldPrice');
-        const editProductDescription = document.getElementById('editProductDescription');
-        const editProductCategory = document.getElementById('editProductCategory');
-        const editProductStock = document.getElementById('editProductStock');
-        const editProductRating = document.getElementById('editProductRating');
-        
-        if (!editProductId || !editProductTitle || !editProductPrice || !editProductDescription) {
-            console.error('Edit form elements not found');
-            showToast('Edit form not ready', 'error');
-            return;
-        }
-        
-        editProductId.value = product.id;
-        editProductTitle.value = product.title || '';
-        editProductPrice.value = product.price || '';
-        if (editProductOldPrice) editProductOldPrice.value = product.old_price || '';
-        editProductDescription.value = product.description || '';
-        if (editProductCategory) editProductCategory.value = product.category || '';
-        if (editProductStock) editProductStock.value = product.stock_status || 'available';
-        if (editProductRating) editProductRating.value = product.rating || '4';
+        document.getElementById('editProductId').value = product.id;
+        document.getElementById('editProductTitle').value = product.title || '';
+        document.getElementById('editProductPrice').value = product.price || '';
+        document.getElementById('editProductOldPrice').value = product.old_price || '';
+        document.getElementById('editProductDescription').value = product.description || '';
+        document.getElementById('editProductCategory').value = product.category || '';
+        document.getElementById('editProductStock').value = product.stock_status || 'available';
+        document.getElementById('editProductRating').value = product.rating || '4';
         
         const previewDiv = document.getElementById('editImagePreview');
         if (previewDiv) {
@@ -618,7 +987,6 @@ async function openEditProductModal(productId) {
         }
         
         document.getElementById('editProductModal').classList.add('active');
-        
     } catch (error) {
         console.error('Error opening edit modal:', error);
         showToast('Failed to load product details', 'error');
@@ -712,9 +1080,7 @@ async function handleEditProduct(e) {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`/api/products/${productId}`, {
             method: 'PUT',
-            headers: {
-                'x-auth-token': token
-            },
+            headers: { 'x-auth-token': token },
             body: formData
         });
 
@@ -739,7 +1105,6 @@ async function handleEditProduct(e) {
     }
 }
 
-// ============= DELETE PRODUCT FUNCTION =============
 async function deleteProduct(productId) {
     if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
         return;
@@ -750,9 +1115,7 @@ async function deleteProduct(productId) {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`/api/products/${productId}`, {
             method: 'DELETE',
-            headers: {
-                'x-auth-token': token
-            }
+            headers: { 'x-auth-token': token }
         });
 
         const result = await response.json();
@@ -771,282 +1134,7 @@ async function deleteProduct(productId) {
     }
 }
 
-// ============= ORDER MANAGEMENT =============
-async function viewOrderDetails(orderId) {
-    showLoading();
-    try {
-        const order = await getOrder(orderId);
-        if (!order) {
-            showToast('Order not found', 'error');
-            return;
-        }
-        renderOrderDetails(order);
-        document.getElementById('orderDetailsModal')?.classList.add('active');
-    } catch (error) {
-        console.error('Failed to load order details:', error);
-        showToast('Failed to load order details', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function renderOrderDetails(order) {
-    const modalBody = document.getElementById('orderDetailsBody');
-    if (!modalBody) return;
-
-    let products = [];
-    try {
-        products = typeof order.products === 'string' ? JSON.parse(order.products) : (order.products || []);
-    } catch (e) {
-        products = [];
-    }
-
-    modalBody.innerHTML = `
-        <div class="order-details">
-            <div class="order-info">
-                <h3>Order Information</h3>
-                <p><strong>Order ID:</strong> ${order.order_id || 'N/A'}</p>
-                <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</p>
-                <p><strong>Status:</strong> <span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></p>
-            </div>
-
-            <div class="customer-info">
-                <h3>Customer Information</h3>
-                <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
-                <p><strong>Phone:</strong> ${order.phone || 'N/A'}</p>
-                ${order.alternative_phone ? `<p><strong>Alternative Phone:</strong> ${order.alternative_phone}</p>` : ''}
-                <p><strong>Location:</strong> ${order.location || 'N/A'}</p>
-                ${order.specific_address ? `<p><strong>Address:</strong> ${order.specific_address}</p>` : ''}
-            </div>
-
-            <div class="order-items">
-                <h3>Order Items</h3>
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Quantity</th>
-                            <th>Price</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${products.map(item => `
-                            <tr>
-                                <td>${item.title || 'N/A'}</td>
-                                <td>${item.quantity || 0}</td>
-                                <td>Ksh ${item.price || 0}</td>
-                                <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3"><strong>Total</strong></td>
-                            <td><strong>Ksh ${order.total_amount || 0}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <div class="order-actions">
-                ${order.status === 'pending' ? `
-                    <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'confirmed')">
-                        Confirm Order
-                    </button>
-                ` : ''}
-                
-                ${order.status === 'confirmed' ? `
-                    <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'shipped')">
-                        Order Shipped
-                    </button>
-                ` : ''}
-                
-                ${order.status === 'shipped' ? `
-                    <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'delivered')">
-                        Order Delivered
-                    </button>
-                ` : ''}
-                
-                ${order.status === 'delivered' ? `
-                    <button class="btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')">
-                        Mark as Completed
-                    </button>
-                ` : ''}
-                
-                <button class="btn-secondary" onclick="generateOrderReceipt(${order.id})">
-                    Generate Receipt
-                </button>
-                
-                <button class="btn-danger" onclick="cancelOrder(${order.id})">
-                    Cancel Order
-                </button>
-                
-                <button class="btn-danger" onclick="deleteOrder(${order.id})" style="background: #f44336; margin-top: 10px;">
-                    <i class="fas fa-trash"></i> Delete Order Permanently
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-async function updateOrderStatus(orderId, status) {
-    if (!confirm(`Are you sure you want to mark this order as ${status}?`)) {
-        return;
-    }
-
-    showLoading();
-    try {
-        const token = localStorage.getItem('adminToken');
-        const response = await fetch(`/api/orders/${orderId}/status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': token
-            },
-            body: JSON.stringify({ status })
-        });
-
-        if (response.status === 404) {
-            showToast('Order not found', 'error');
-            return;
-        }
-
-        if (response.status === 401 || response.status === 403) {
-            showToast('Authentication failed. Please login again.', 'error');
-            adminLogout();
-            return;
-        }
-
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            document.getElementById('orderDetailsModal')?.classList.remove('active');
-            loadDashboardData();
-            showToast(`Order marked as ${status}`, 'success');
-        } else {
-            showToast(result.message || 'Failed to update order', 'error');
-        }
-    } catch (error) {
-        console.error('Failed to update order status:', error);
-        showToast('Failed to update order status', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function generateOrderReceipt(orderId) {
-    const order = currentOrders.find(o => o.id === orderId);
-    if (!order) {
-        showToast('Order not found', 'error');
-        return;
-    }
-
-    let products = [];
-    try {
-        products = typeof order.products === 'string' ? JSON.parse(order.products) : (order.products || []);
-    } catch (e) {
-        products = [];
-    }
-
-    const receiptWindow = window.open('', '_blank');
-    receiptWindow.document.write(`
-        <html>
-            <head>
-                <title>Order Receipt - KUKU YETU</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    .receipt { max-width: 800px; margin: 0 auto; }
-                    .header { text-align: center; margin-bottom: 30px; }
-                    .section { margin: 20px 0; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-                    .total { font-weight: bold; font-size: 1.2em; }
-                    .footer { margin-top: 40px; text-align: center; }
-                    .status { display: inline-block; padding: 5px 10px; border-radius: 4px; }
-                    .status.${order.status} { background: ${getStatusColor(order.status)}; color: white; }
-                </style>
-            </head>
-            <body>
-                <div class="receipt">
-                    <div class="header">
-                        <h1>KUKU YETU</h1>
-                        <p>Premium Poultry Products</p>
-                        <h2>Order Receipt</h2>
-                    </div>
-                    
-                    <div class="section">
-                        <h3>Order Details</h3>
-                        <p><strong>Order ID:</strong> ${order.order_id || 'N/A'}</p>
-                        <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</p>
-                        <p><strong>Status:</strong> <span class="status ${order.status || 'pending'}">${order.status || 'pending'}</span></p>
-                    </div>
-                    
-                    <div class="section">
-                        <h3>Customer Information</h3>
-                        <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
-                        <p><strong>Phone:</strong> ${order.phone || 'N/A'}</p>
-                        ${order.alternative_phone ? `<p><strong>Alternative Phone:</strong> ${order.alternative_phone}</p>` : ''}
-                        <p><strong>Location:</strong> ${order.location || 'N/A'}</p>
-                        ${order.specific_address ? `<p><strong>Address:</strong> ${order.specific_address}</p>` : ''}
-                    </div>
-                    
-                    <div class="section">
-                        <h3>Order Items</h3>
-                         <table>
-                            <thead>
-                                 <tr>
-                                    <th>Product</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
-                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${products.map(item => `
-                                     <tr>
-                                        <td>${item.title || 'N/A'}</td>
-                                        <td>${item.quantity || 0}</td>
-                                        <td>Ksh ${item.price || 0}</td>
-                                        <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                                     </tr>
-                                `).join('')}
-                            </tbody>
-                         </table>
-                        <p class="total">Total Amount: Ksh ${order.total_amount || 0}</p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>Thank you for choosing KUKU YETU!</p>
-                        <p>For any inquiries, please contact us at support@kukuyetu.com</p>
-                    </div>
-                </div>
-            </body>
-        </html>
-    `);
-    receiptWindow.document.close();
-    receiptWindow.print();
-}
-
-function getStatusColor(status) {
-    switch(status) {
-        case 'pending': return '#ff9800';
-        case 'confirmed': return '#2196f3';
-        case 'shipped': return '#9c27b0';
-        case 'delivered': return '#4caf50';
-        case 'completed': return '#2e7d32';
-        case 'cancelled': return '#f44336';
-        default: return '#999';
-    }
-}
-
-function cancelOrder(orderId) {
-    if (confirm('Are you sure you want to cancel this order?')) {
-        updateOrderStatus(orderId, 'cancelled');
-    }
-}
-
-// ============= API FUNCTIONS =============
+// ============== API FUNCTIONS ==============
 async function getProducts() {
     try {
         const response = await fetch('/api/products');
@@ -1067,13 +1155,12 @@ async function getAllOrders() {
         }
         
         const response = await fetch('/api/orders', {
-            headers: {
-                'x-auth-token': token
-            }
+            headers: { 'x-auth-token': token }
         });
         
         if (response.status === 401 || response.status === 403) {
             console.warn('Authentication failed for orders endpoint');
+            adminLogout();
             return [];
         }
         
@@ -1094,41 +1181,7 @@ async function getAllOrders() {
     }
 }
 
-async function getOrder(orderId) {
-    try {
-        const token = localStorage.getItem('adminToken');
-        if (!token) {
-            throw new Error('No admin token found');
-        }
-        
-        const response = await fetch(`/api/orders/${orderId}`, {
-            headers: {
-                'x-auth-token': token
-            }
-        });
-        
-        if (response.status === 401 || response.status === 403) {
-            console.warn('Authentication failed for order');
-            return null;
-        }
-        
-        if (response.status === 404) {
-            return null;
-        }
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        return data.order || data || {};
-    } catch (error) {
-        console.error('Error fetching order:', error);
-        return null;
-    }
-}
-
-// ============= UTILITY FUNCTIONS =============
+// ============== UTILITY FUNCTIONS ==============
 function showLoading() {
     const spinner = document.getElementById('loading-spinner');
     if (spinner) spinner.classList.add('active');
@@ -1151,27 +1204,21 @@ function showToast(message, type = 'info') {
     if (type === 'error') icon = 'fa-exclamation-circle';
     if (type === 'warning') icon = 'fa-exclamation-triangle';
     
-    toast.innerHTML = `
-        <i class="fas ${icon}"></i>
-        <span>${message}</span>
-    `;
-    
+    toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
     container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+    setTimeout(() => toast.remove(), 3000);
 }
 
-// ============= GLOBAL EXPOSURE =============
+// ============== GLOBAL EXPOSURE ==============
+window.adminLogin = adminLogin;
+window.adminLogout = adminLogout;
+window.showTab = showTab;
 window.openAddProductModal = openAddProductModal;
 window.openEditProductModal = openEditProductModal;
-window.removeExistingImage = removeExistingImage;
+window.openEditOrderModal = openEditOrderModal;
 window.viewOrderDetails = viewOrderDetails;
 window.updateOrderStatus = updateOrderStatus;
 window.generateOrderReceipt = generateOrderReceipt;
 window.deleteProduct = deleteProduct;
-window.cancelOrder = cancelOrder;
 window.deleteOrder = deleteOrder;
-window.adminLogout = adminLogout;
-window.showTab = showTab;
+window.removeExistingImage = removeExistingImage;
