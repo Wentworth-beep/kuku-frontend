@@ -5,7 +5,6 @@ let currentProducts = [];
 let currentEditingProduct = null;
 let imagesToRemove = [];
 
-
 // Check if admin is logged in
 document.addEventListener('DOMContentLoaded', () => {
     // Add data URI favicon to prevent 404
@@ -87,7 +86,7 @@ async function handleAdminLogin(e) {
 
     showLoading();
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -168,12 +167,24 @@ function switchAdminTab(tab) {
 async function loadDashboardData() {
     showLoading();
     try {
-        // Load orders
-        const orders = await getAllOrders();
+        // Load orders (with error handling)
+        let orders = [];
+        try {
+            orders = await getAllOrders();
+        } catch (orderError) {
+            console.warn('Could not load orders:', orderError.message);
+            orders = [];
+        }
         currentOrders = orders;
 
         // Load products
-        const products = await getProducts();
+        let products = [];
+        try {
+            products = await getProducts();
+        } catch (productError) {
+            console.warn('Could not load products:', productError.message);
+            products = [];
+        }
         currentProducts = products;
 
         // Update stats
@@ -216,6 +227,7 @@ async function loadProducts() {
     } catch (error) {
         console.error('Failed to load products:', error);
         showToast('Failed to load products', 'error');
+        renderProductsTable([]);
     } finally {
         hideLoading();
     }
@@ -224,15 +236,15 @@ async function loadProducts() {
 function getImageUrl(imagePath) {
     if (!imagePath) return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
     if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/')) return API_BASE_URL.replace('/api', '') + imagePath;
-    return API_BASE_URL.replace('/api', '') + '/' + imagePath;
+    if (imagePath.startsWith('/')) return imagePath;
+    return '/' + imagePath;
 }
 
 function renderProductsTable(products) {
     const tbody = document.getElementById('productsBody');
     if (!tbody) return;
     
-    if (products.length === 0) {
+    if (!products || products.length === 0) {
         tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td><tr>';
         return;
     }
@@ -286,6 +298,7 @@ async function loadAllOrders() {
     } catch (error) {
         console.error('Failed to load orders:', error);
         showToast('Failed to load orders', 'error');
+        renderAllOrdersTable([]);
     } finally {
         hideLoading();
     }
@@ -295,7 +308,7 @@ function renderAllOrdersTable(orders) {
     const tbody = document.getElementById('allOrdersBody');
     if (!tbody) return;
     
-    if (orders.length === 0) {
+    if (!orders || orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No orders found</td></tr>';
         return;
     }
@@ -334,7 +347,7 @@ function loadRecentOrders(orders) {
     const tbody = document.getElementById('recentOrdersBody');
     if (!tbody) return;
     
-    if (orders.length === 0) {
+    if (!orders || orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No orders found</td></tr>';
         return;
     }
@@ -378,12 +391,18 @@ async function deleteOrder(orderId) {
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        const response = await fetch(`/api/orders/${orderId}`, {
             method: 'DELETE',
             headers: {
                 'x-auth-token': token
             }
         });
+
+        if (response.status === 404) {
+            showToast('Order already deleted or not found', 'info');
+            loadDashboardData();
+            return;
+        }
 
         const result = await response.json();
         
@@ -491,7 +510,7 @@ async function handleAddProduct(e) {
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/products`, {
+        const response = await fetch('/api/products', {
             method: 'POST',
             headers: {
                 'x-auth-token': token
@@ -529,7 +548,7 @@ async function openEditProductModal(productId) {
         let product = currentProducts.find(p => p.id === productId);
         
         if (!product) {
-            const response = await fetch(`${API_BASE_URL}/products/${productId}`);
+            const response = await fetch(`/api/products/${productId}`);
             const data = await response.json();
             product = data.product || data;
         }
@@ -660,7 +679,7 @@ async function handleEditProduct(e) {
         }
 
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        const response = await fetch(`/api/products/${productId}`, {
             method: 'PUT',
             headers: {
                 'x-auth-token': token
@@ -699,7 +718,7 @@ async function deleteProduct(productId) {
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        const response = await fetch(`/api/products/${productId}`, {
             method: 'DELETE',
             headers: {
                 'x-auth-token': token
@@ -728,6 +747,10 @@ async function viewOrderDetails(orderId) {
     showLoading();
     try {
         const order = await getOrder(orderId);
+        if (!order) {
+            showToast('Order not found', 'error');
+            return;
+        }
         renderOrderDetails(order);
         document.getElementById('orderDetailsModal')?.classList.add('active');
     } catch (error) {
@@ -846,7 +869,7 @@ async function updateOrderStatus(orderId, status) {
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        const response = await fetch(`/api/orders/${orderId}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -854,6 +877,11 @@ async function updateOrderStatus(orderId, status) {
             },
             body: JSON.stringify({ status })
         });
+
+        if (response.status === 404) {
+            showToast('Order not found', 'error');
+            return;
+        }
 
         const result = await response.json();
         
@@ -874,7 +902,10 @@ async function updateOrderStatus(orderId, status) {
 
 function generateOrderReceipt(orderId) {
     const order = currentOrders.find(o => o.id === orderId);
-    if (!order) return;
+    if (!order) {
+        showToast('Order not found', 'error');
+        return;
+    }
 
     let products = [];
     try {
@@ -946,7 +977,7 @@ function generateOrderReceipt(orderId) {
                                     </tr>
                                 `).join('')}
                             </tbody>
-                        </table>
+                        能有
                         <p class="total">Total Amount: Ksh ${order.total_amount || 0}</p>
                     </div>
                     
@@ -984,7 +1015,7 @@ function cancelOrder(orderId) {
 
 async function getProducts() {
     try {
-        const response = await fetch(`${API_BASE_URL}/products`);
+        const response = await fetch('/api/products');
         const data = await response.json();
         return data.products || data || [];
     } catch (error) {
@@ -1001,11 +1032,16 @@ async function getAllOrders() {
             return [];
         }
         
-        const response = await fetch(`${API_BASE_URL}/orders`, {
+        const response = await fetch('/api/orders', {
             headers: {
                 'x-auth-token': token
             }
         });
+        
+        if (response.status === 404) {
+            console.warn('Orders endpoint not found - returning empty array');
+            return [];
+        }
         
         if (!response.ok) {
             if (response.status === 401) {
@@ -1020,7 +1056,7 @@ async function getAllOrders() {
         return data.orders || data || [];
     } catch (error) {
         console.error('Error fetching orders:', error);
-        throw error;
+        return [];
     }
 }
 
@@ -1031,11 +1067,15 @@ async function getOrder(orderId) {
             throw new Error('No admin token found');
         }
         
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+        const response = await fetch(`/api/orders/${orderId}`, {
             headers: {
                 'x-auth-token': token
             }
         });
+        
+        if (response.status === 404) {
+            return null;
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1045,7 +1085,7 @@ async function getOrder(orderId) {
         return data.order || data || {};
     } catch (error) {
         console.error('Error fetching order:', error);
-        throw error;
+        return null;
     }
 }
 
