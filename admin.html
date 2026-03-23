@@ -7,9 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/admin.css">
-    <!-- Add to both index.html and admin.html in the head section -->
-<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
-<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+    <!-- Data URI favicon - no 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐔%3C/text%3E%3C/svg%3E">
 </head>
 <body>
     <!-- Loading Spinner -->
@@ -21,7 +20,7 @@
     <div id="adminLogin" class="admin-login">
         <div class="login-box">
             <h1>KUKU YETU Admin</h1>
-            <form id="adminLoginForm">
+            <form id="adminLoginForm" onsubmit="adminLogin(event)">
                 <div class="form-group">
                     <label>Email</label>
                     <input type="email" id="adminEmail" required>
@@ -49,9 +48,9 @@
         <div class="admin-nav">
             <div class="container">
                 <ul class="admin-tabs">
-                    <li><button class="tab-btn active" data-tab="dashboard">Dashboard</button></li>
-                    <li><button class="tab-btn" data-tab="products">Products</button></li>
-                    <li><button class="tab-btn" data-tab="orders">Orders</button></li>
+                    <li><button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button></li>
+                    <li><button class="tab-btn" data-tab="products" onclick="showTab('products')">Products</button></li>
+                    <li><button class="tab-btn" data-tab="orders" onclick="showTab('orders')">Orders</button></li>
                 </ul>
             </div>
         </div>
@@ -111,7 +110,7 @@
                     <div class="table-container">
                         <table id="productsTable">
                             <thead>
-                                <tr>
+                                 <tr>
                                     <th>ID</th>
                                     <th>Image</th>
                                     <th>Title</th>
@@ -120,7 +119,7 @@
                                     <th>Stock</th>
                                     <th>Rating</th>
                                     <th>Actions</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody id="productsBody">
                                 <!-- Products will be loaded here -->
@@ -135,7 +134,7 @@
                     <div class="table-container">
                         <table id="allOrdersTable">
                             <thead>
-                                <tr>
+                                 <tr>
                                     <th>Order ID</th>
                                     <th>Customer Name</th>
                                     <th>Phone</th>
@@ -143,7 +142,7 @@
                                     <th>Product</th>
                                     <th>Status</th>
                                     <th>Action</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody id="allOrdersBody">
                                 <!-- Orders will be loaded here -->
@@ -156,14 +155,16 @@
     </div>
 
     <!-- Add Product Modal -->
-    <div class="modal" id="addProductModal">
+    <div class="modal" id="productModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Add New Product</h2>
-                <button class="close-modal"><i class="fas fa-times"></i></button>
+                <button class="close-modal" onclick="closeProductModal()"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <form id="addProductForm" enctype="multipart/form-data">
+                <form id="productForm" enctype="multipart/form-data" onsubmit="saveProduct(event)">
+                    <input type="hidden" id="productId">
+                    
                     <div class="form-group">
                         <label>Title</label>
                         <input type="text" id="productTitle" required>
@@ -171,38 +172,20 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Price ($)</label>
+                            <label>Price (Ksh)</label>
                             <input type="number" id="productPrice" step="0.01" required>
                         </div>
                         <div class="form-group">
-                            <label>Old Price ($) (Optional)</label>
+                            <label>Old Price (Ksh) (Optional)</label>
                             <input type="number" id="productOldPrice" step="0.01">
                         </div>
                     </div>
 
-                                      <div class="form-group" style="clear: both; width: 100%; margin-bottom: 20px;">
-                        <label for="productDescription" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #333;">Description <span style="color: #f44336;">*</span></label>
-                        <textarea 
-                            id="productDescription" 
-                            name="description" 
-                            rows="4" 
-                            required
-                            style="width: 100%; 
-                                   padding: 12px; 
-                                   border: 2px solid #2196F3; 
-                                   border-radius: 8px; 
-                                   font-size: 16px; 
-                                   font-family: 'Segoe UI', Arial, sans-serif;
-                                   background-color: #ffffff;
-                                   color: #000000;
-                                   resize: vertical;
-                                   box-sizing: border-box;
-                                   line-height: 1.6;
-                                   box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
-                            placeholder="Enter detailed product description here..."
-                        ></textarea>
-                        <small style="display: block; margin-top: 5px; color: #666; font-size: 12px;">Provide a detailed description of your product</small>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="productDescription" rows="4" required></textarea>
                     </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label>Category</label>
@@ -238,112 +221,36 @@
 
                     <div class="form-group">
                         <label>Product Images (Select multiple)</label>
-                        <input type="file" id="productImages" multiple accept="image/*" required>
+                        <input type="file" id="productImages" multiple accept="image/*">
                         <div class="image-preview" id="imagePreview"></div>
+                        <small style="display: block; margin-top: 5px; color: #666;">Images will be uploaded to server</small>
                     </div>
 
-                    <button type="submit" class="btn-primary">Add Product</button>
+                    <button type="submit" class="btn-primary">Save Product</button>
                 </form>
             </div>
         </div>
     </div>
 
     <!-- Order Details Modal -->
-    <div class="modal" id="orderDetailsModal">
+    <div class="modal" id="orderModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Order Details</h2>
-                <button class="close-modal"><i class="fas fa-times"></i></button>
+                <button class="close-modal" onclick="closeOrderModal()"><i class="fas fa-times"></i></button>
             </div>
-            <div class="modal-body" id="orderDetailsBody">
+            <div class="modal-body" id="orderDetails">
                 <!-- Order details will be loaded here -->
             </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="updateOrderStatus('confirmed')">Confirm Order</button>
+                <button class="btn-primary" onclick="updateOrderStatus('shipped')">Mark as Shipped</button>
+                <button class="btn-primary" onclick="updateOrderStatus('delivered')">Mark as Delivered</button>
+                <button class="btn-primary" onclick="updateOrderStatus('completed')">Mark as Completed</button>
+                <button class="btn-secondary" onclick="closeOrderModal()">Close</button>
+            </div>
         </div>
     </div>
-    <!-- Edit Product Modal -->
-<div class="modal" id="editProductModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Edit Product</h2>
-            <button class="close-modal"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <form id="editProductForm" enctype="multipart/form-data">
-                <input type="hidden" id="editProductId">
-                
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="editProductTitle" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Price ($)</label>
-                        <input type="number" id="editProductPrice" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Old Price ($) (Optional)</label>
-                        <input type="number" id="editProductOldPrice" step="0.01">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="editProductDescription" rows="4" required></textarea>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select id="editProductCategory" required>
-                            <option value="">Select Category</option>
-                            <option value="broilers">Broilers</option>
-                            <option value="layers">Layers</option>
-                            <option value="eggs">Eggs</option>
-                            <option value="chicks">Chicks</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Stock Status</label>
-                        <select id="editProductStock" required>
-                            <option value="available">Available</option>
-                            <option value="low">Few Units Left</option>
-                            <option value="out">Out of Stock</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Rating</label>
-                    <select id="editProductRating" required>
-                        <option value="1">1 Star</option>
-                        <option value="2">2 Stars</option>
-                        <option value="3">3 Stars</option>
-                        <option value="4">4 Stars</option>
-                        <option value="4.5">4.5 Stars</option>
-                        <option value="5">5 Stars</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Current Images</label>
-                    <div class="image-preview" id="editImagePreview"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>Add New Images (Optional)</label>
-                    <input type="file" id="editProductImages" multiple accept="image/*">
-                    <small style="display: block; margin-top: 5px; color: #666;">Select new images to add. Existing images will be kept unless removed.</small>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" class="btn-primary" style="flex: 2;">Update Product</button>
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('editProductModal').classList.remove('active')" style="flex: 1;">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
