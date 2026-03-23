@@ -34,7 +34,8 @@ async function verifyAdmin(token) {
         });
         const data = await response.json();
         
-        if (data.user && data.user.isAdmin) {
+        // FIX: Use is_admin (with underscore)
+        if (data.user && data.user.is_admin === true) {
             adminToken = token;
             console.log('✅ Admin verified:', data.user.email);
             showDashboard();
@@ -64,6 +65,7 @@ function showDashboard() {
     if (dashboardEl) dashboardEl.style.display = 'flex';
 }
 
+// FIXED ADMIN LOGIN FUNCTION
 async function adminLogin(event) {
     event.preventDefault();
     
@@ -83,6 +85,8 @@ async function adminLogin(event) {
             loginBtn.textContent = 'Logging in...';
         }
         
+        console.log('🔐 Admin login attempt:', { email, password: '***' });
+        
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -90,15 +94,18 @@ async function adminLogin(event) {
         });
         
         const result = await response.json();
+        console.log('📡 Login response:', result);
         
-        if (result.token && result.user && result.user.isAdmin) {
+        // FIX: Use is_admin (with underscore) not isAdmin
+        if (result.token && result.user && result.user.is_admin === true) {
             localStorage.setItem('adminToken', result.token);
             adminToken = result.token;
             showAdminNotification('Login successful!', 'success');
             showDashboard();
             loadDashboardData();
         } else {
-            showAdminNotification('Invalid admin credentials', 'error');
+            console.error('Login failed:', result);
+            showAdminNotification(result.message || 'Invalid credentials', 'error');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -149,7 +156,7 @@ function displayRecentOrders(recentOrders) {
     if (!tbody) return;
     
     if (!recentOrders || recentOrders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No recent orders</td></tr>';
+        tbody.innerHTML = '}<td colspan="6">No recent orders</td></tr>';
         return;
     }
     
@@ -161,7 +168,7 @@ function displayRecentOrders(recentOrders) {
             <td><span class="status-badge ${order.status}">${order.status || 'pending'}</span></td>
             <td>${new Date(order.created_at).toLocaleDateString()}</td>
             <td><button onclick="viewOrder(${order.id})" class="btn-sm">View</button></td>
-        </tr>
+         </tr>
     `).join('');
 }
 
@@ -184,7 +191,7 @@ function displayProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No products found</td></tr>';
+        tbody.innerHTML = '}<td colspan="8">No products found</td></tr>';
         return;
     }
     
@@ -200,8 +207,8 @@ function displayProductsTable(products) {
             <td>
                 <button onclick="editProduct(${product.id})" class="btn-edit">Edit</button>
                 <button onclick="deleteProduct(${product.id})" class="btn-delete">Delete</button>
-            </td>
-        </tr>
+             </td>
+         </tr>
     `).join('');
 }
 
@@ -326,7 +333,7 @@ function displayOrdersTable(orders) {
     if (!tbody) return;
     
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No orders found</td></tr>';
+        tbody.innerHTML = '}<td colspan="8">No orders found</td></tr>';
         return;
     }
     
@@ -340,7 +347,7 @@ function displayOrdersTable(orders) {
             <td><span class="status-badge ${order.status}">${order.status || 'pending'}</span></td>
             <td>${new Date(order.created_at).toLocaleDateString()}</td>
             <td><button onclick="viewOrder(${order.id})" class="btn-sm">View</button></td>
-        </tr>
+         </tr>
     `).join('');
 }
 
