@@ -24,11 +24,53 @@ document.addEventListener('DOMContentLoaded', () => {
         document.head.appendChild(favicon);
     }
 });
+
+// ============== UI FUNCTIONS ==============
+function showLoginForm() {
+    const loginEl = document.getElementById('adminLogin');
+    const dashboardEl = document.getElementById('adminDashboard');
+    if (loginEl) loginEl.style.display = 'flex';
+    if (dashboardEl) dashboardEl.style.display = 'none';
+}
+
+function showDashboard() {
+    const loginEl = document.getElementById('adminLogin');
+    const dashboardEl = document.getElementById('adminDashboard');
+    if (loginEl) loginEl.style.display = 'none';
+    if (dashboardEl) dashboardEl.style.display = 'flex';
+}
+
+// ============== AUTHENTICATION ==============
+async function verifyAdmin(token) {
+    try {
+        console.log('Verifying admin token...');
+        const response = await fetch('/api/auth/verify', {
+            headers: { 'x-auth-token': token }
+        });
+        const data = await response.json();
+        
+        if (data.user && data.user.email === 'admin@kukuyetu.com') {
+            adminToken = token;
+            console.log('✅ Admin verified:', data.user.email);
+            showDashboard();
+            loadDashboardData();
+        } else {
+            console.log('❌ Not admin');
+            localStorage.removeItem('adminToken');
+            showLoginForm();
+        }
+    } catch (error) {
+        console.error('Token error:', error);
+        localStorage.removeItem('adminToken');
+        showLoginForm();
+    }
+}
+
 async function adminLogin(event) {
     event.preventDefault();
     
-    const email = document.getElementById('adminEmail').value;
-    const password = document.getElementById('adminPassword').value;
+    const email = document.getElementById('adminEmail')?.value;
+    const password = document.getElementById('adminPassword')?.value;
     const loginBtn = event.target.querySelector('button[type="submit"]');
     const originalText = loginBtn?.textContent;
     
@@ -43,7 +85,7 @@ async function adminLogin(event) {
             loginBtn.textContent = 'Logging in...';
         }
         
-        console.log('🔐 Admin login attempt:', { email });
+        console.log('🔐 Admin login:', { email });
         
         const response = await fetch('/api/auth/login', {
             method: 'POST',
@@ -54,16 +96,13 @@ async function adminLogin(event) {
         const result = await response.json();
         console.log('📡 Login response:', result);
         
-        // FIX: Just check if token exists and success is true
         if (result.success === true && result.token) {
-            console.log('✅ Login successful!');
             localStorage.setItem('adminToken', result.token);
             adminToken = result.token;
             showAdminNotification('Login successful!', 'success');
             showDashboard();
             loadDashboardData();
         } else {
-            console.log('❌ Login failed:', result);
             showAdminNotification(result.message || 'Invalid credentials', 'error');
         }
     } catch (error) {
@@ -76,6 +115,7 @@ async function adminLogin(event) {
         }
     }
 }
+
 function adminLogout() {
     localStorage.removeItem('adminToken');
     adminToken = null;
@@ -87,21 +127,16 @@ function adminLogout() {
 async function loadDashboardData() {
     showAdminLoader();
     try {
-        console.log('📊 Loading dashboard data...');
+        console.log('📊 Loading dashboard...');
         
-        // Fetch orders
-        const ordersResponse = await fetch('/api/orders', {
+        const ordersRes = await fetch('/api/orders', {
             headers: { 'x-auth-token': adminToken }
         });
-        orders = await ordersResponse.json();
-        console.log(`📦 Orders loaded: ${orders.length}`);
+        orders = await ordersRes.json();
         
-        // Fetch products
-        const productsResponse = await fetch('/api/products');
-        products = await productsResponse.json();
-        console.log(`📦 Products loaded: ${products.length}`);
+        const productsRes = await fetch('/api/products');
+        products = await productsRes.json();
         
-        // Update stats
         document.getElementById('totalOrders').textContent = orders.length || 0;
         document.getElementById('totalProducts').textContent = products.length || 0;
         
@@ -126,7 +161,7 @@ function displayRecentOrders(recentOrders) {
     if (!tbody) return;
     
     if (!recentOrders || recentOrders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No recent orders</td></tr>';
+        tbody.innerHTML = '}<td colspan="6" style="text-align: center;">No recent orders</td></tr>';
         return;
     }
     
@@ -146,12 +181,10 @@ function displayRecentOrders(recentOrders) {
 async function loadProducts() {
     showAdminLoader();
     try {
-        console.log('📦 Loading products...');
         const response = await fetch('/api/products');
         products = await response.json();
         displayProductsTable(products);
     } catch (error) {
-        console.error('Products error:', error);
         showAdminNotification('Failed to load products', 'error');
     } finally {
         hideAdminLoader();
@@ -163,7 +196,7 @@ function displayProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No products found</td></tr>';
+        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td></tr>';
         return;
     }
     
@@ -179,8 +212,8 @@ function displayProductsTable(products) {
             <td>
                 <button onclick="editProduct(${product.id})" class="btn-edit">Edit</button>
                 <button onclick="deleteProduct(${product.id})" class="btn-delete">Delete</button>
-            </td>
-        </tr>
+             </td>
+         </tr>
     `).join('');
 }
 
@@ -253,7 +286,7 @@ async function saveProduct(event) {
             showAdminNotification(result.msg || 'Failed to save product', 'error');
         }
     } catch (error) {
-        console.error('Save product error:', error);
+        console.error('Save error:', error);
         showAdminNotification('Error saving product', 'error');
     } finally {
         if (submitBtn) {
@@ -280,7 +313,6 @@ async function editProduct(productId) {
         
         openAddProductModal();
     } catch (error) {
-        console.error('Edit product error:', error);
         showAdminNotification('Failed to load product', 'error');
     } finally {
         hideAdminLoader();
@@ -303,7 +335,6 @@ async function deleteProduct(productId) {
             showAdminNotification('Failed to delete product', 'error');
         }
     } catch (error) {
-        console.error('Delete product error:', error);
         showAdminNotification('Error deleting product', 'error');
     }
 }
@@ -312,14 +343,12 @@ async function deleteProduct(productId) {
 async function loadOrders() {
     showAdminLoader();
     try {
-        console.log('📦 Loading orders...');
         const response = await fetch('/api/orders', {
             headers: { 'x-auth-token': adminToken }
         });
         orders = await response.json();
         displayOrdersTable(orders);
     } catch (error) {
-        console.error('Orders error:', error);
         showAdminNotification('Failed to load orders', 'error');
     } finally {
         hideAdminLoader();
@@ -331,7 +360,7 @@ function displayOrdersTable(orders) {
     if (!tbody) return;
     
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No orders found</td></tr>';
+        tbody.innerHTML = '}<td colspan="7" style="text-align: center;">No orders found</td></tr>';
         return;
     }
     
@@ -344,7 +373,7 @@ function displayOrdersTable(orders) {
             <td>${order.products?.length || 0} items</td>
             <td><span class="status-badge ${order.status}">${order.status || 'pending'}</span></td>
             <td><button onclick="viewOrder(${order.id})" class="btn-sm">View</button></td>
-        </tr>
+         </tr>
     `).join('');
 }
 
@@ -405,20 +434,17 @@ async function updateOrderStatus(status) {
             showAdminNotification('Failed to update order', 'error');
         }
     } catch (error) {
-        console.error('Update order error:', error);
         showAdminNotification('Error updating order', 'error');
     }
 }
 
-// ============== SECTION MANAGEMENT ==============
+// ============== TAB MANAGEMENT ==============
 function showTab(tab) {
-    // Update active tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
-    // Show selected tab content
     document.querySelectorAll('.admin-tab').forEach(tabContent => {
         tabContent.classList.remove('active');
     });
@@ -447,7 +473,7 @@ function showAdminNotification(message, type) {
     notification.style.cssText = `
         position: fixed; top: 20px; right: 20px; padding: 12px 20px;
         background: ${type === 'success' ? '#4caf50' : '#f44336'};
-        color: white; border-radius: 5px; z-index: 10000; animation: fadeIn 0.3s;
+        color: white; border-radius: 5px; z-index: 10000;
         font-family: Arial, sans-serif; font-size: 14px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     `;
