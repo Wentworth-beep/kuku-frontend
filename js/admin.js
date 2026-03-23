@@ -24,53 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.head.appendChild(favicon);
     }
 });
-
-// ============== AUTHENTICATION ==============
-async function verifyAdmin(token) {
-    try {
-        console.log('Verifying admin token...');
-        const response = await fetch('/api/auth/verify', {
-            headers: { 'x-auth-token': token }
-        });
-        const data = await response.json();
-        
-        if (data.user && data.user.is_admin === true) {
-            adminToken = token;
-            console.log('✅ Admin verified:', data.user.email);
-            showDashboard();
-            loadDashboardData();
-        } else {
-            console.log('❌ Not an admin, showing login form');
-            localStorage.removeItem('adminToken');
-            showLoginForm();
-        }
-    } catch (error) {
-        console.error('Token verification error:', error);
-        localStorage.removeItem('adminToken');
-        showLoginForm();
-    }
-}
-
-function showLoginForm() {
-    const loginEl = document.getElementById('adminLogin');
-    const dashboardEl = document.getElementById('adminDashboard');
-    if (loginEl) loginEl.style.display = 'flex';
-    if (dashboardEl) dashboardEl.style.display = 'none';
-}
-
-function showDashboard() {
-    const loginEl = document.getElementById('adminLogin');
-    const dashboardEl = document.getElementById('adminDashboard');
-    if (loginEl) loginEl.style.display = 'none';
-    if (dashboardEl) dashboardEl.style.display = 'flex';
-}
-
-// ============== FIXED ADMIN LOGIN FUNCTION ==============
 async function adminLogin(event) {
     event.preventDefault();
     
-    const email = document.getElementById('adminEmail')?.value;
-    const password = document.getElementById('adminPassword')?.value;
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
     const loginBtn = event.target.querySelector('button[type="submit"]');
     const originalText = loginBtn?.textContent;
     
@@ -85,7 +43,7 @@ async function adminLogin(event) {
             loginBtn.textContent = 'Logging in...';
         }
         
-        console.log('🔐 Admin login attempt:', { email, password: '***' });
+        console.log('🔐 Admin login attempt:', { email });
         
         const response = await fetch('/api/auth/login', {
             method: 'POST',
@@ -96,16 +54,16 @@ async function adminLogin(event) {
         const result = await response.json();
         console.log('📡 Login response:', result);
         
-        // FIX: Check success === true AND token exists
+        // FIX: Just check if token exists and success is true
         if (result.success === true && result.token) {
+            console.log('✅ Login successful!');
             localStorage.setItem('adminToken', result.token);
             adminToken = result.token;
-            console.log('✅ Login successful!');
             showAdminNotification('Login successful!', 'success');
             showDashboard();
             loadDashboardData();
         } else {
-            console.error('❌ Login failed:', result);
+            console.log('❌ Login failed:', result);
             showAdminNotification(result.message || 'Invalid credentials', 'error');
         }
     } catch (error) {
@@ -118,7 +76,6 @@ async function adminLogin(event) {
         }
     }
 }
-
 function adminLogout() {
     localStorage.removeItem('adminToken');
     adminToken = null;
