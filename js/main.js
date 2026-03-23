@@ -1,6 +1,4 @@
 // ============== FRONTEND PRODUCT CONTROLLER ==============
-// This calls YOUR BACKEND API at https://kuku-backend-ntr4.onrender.com/api/products
-
 class FrontendProductController {
     constructor() {
         this.products = [];
@@ -14,7 +12,6 @@ class FrontendProductController {
             const response = await fetch(`${this.apiBase}/products`);
             const data = await response.json();
             
-            // Handle different response formats from your backend
             if (data.success === true && data.products) {
                 this.products = data.products;
             } else if (Array.isArray(data)) {
@@ -55,10 +52,9 @@ class FrontendProductController {
     }
 
     getImageUrl(imagePath) {
-        if (!imagePath) return '/assets/images/logo.png';
+        if (!imagePath) return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
         if (imagePath.startsWith('http')) return imagePath;
         
-        // Clean the path
         let cleanPath = imagePath;
         if (cleanPath.startsWith('{{') && cleanPath.endsWith('}}')) {
             cleanPath = cleanPath.slice(1, -1);
@@ -67,7 +63,6 @@ class FrontendProductController {
             cleanPath = cleanPath.slice(1);
         }
         
-        // Use your backend base URL for images
         return `https://kuku-backend-ntr4.onrender.com/${cleanPath}`;
     }
 
@@ -91,11 +86,10 @@ class FrontendProductController {
 // Create global instance
 const productController = new FrontendProductController();
 window.productController = productController;
-// ============== KUKU YETU MAIN APPLICATION ==============
 
-// Global variables
+// ============== GLOBAL VARIABLES ==============
 let currentUser = null;
-let cart = [];
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let currentOrder = null;
 let notificationInterval = null;
@@ -103,7 +97,10 @@ let notificationInterval = null;
 // DOM Elements
 let productsGrid, loadingSpinner, cartBadge, notificationBadge, notificationList, toastContainer;
 
-// Initialize the app
+// API Base URL (from api.js)
+const API_BASE_URL = 'https://kuku-backend-ntr4.onrender.com/api';
+
+// ============== INITIALIZATION ==============
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 KUKU YETU initializing...');
     
@@ -118,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load data
     loadInitialData();
     setupEventListeners();
-    loadCart();
     updateCartBadge();
     checkAuthAndRestoreSession();
     startNotificationPolling();
@@ -138,7 +134,6 @@ async function loadInitialData() {
 }
 
 // ============== RENDER FUNCTIONS ==============
-
 function renderProducts(products) {
     if (!productsGrid) return;
     
@@ -159,7 +154,7 @@ function renderProducts(products) {
 
 function createProductCard(product) {
     const isFavorite = favorites.includes(product.id);
-    const imageUrl = productController.getImageUrl(product.images?.[0], product.category);
+    const imageUrl = productController.getImageUrl(product.images?.[0]);
     const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 200\'%3E%3Crect width=\'300\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
     
     let stockClass = 'available';
@@ -177,9 +172,9 @@ function createProductCard(product) {
             <div class="product-image">
                 <img data-src="${imageUrl}" 
                      src="${placeholder}"
-                     alt="${product.title || 'Product'}"
+                     alt="${escapeHtml(product.title) || 'Product'}"
                      class="lazy-image"
-                     onerror="this.src='/assets/images/logo.png'">
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E'">
                 <span class="product-category">${product.category || 'Uncategorized'}</span>
                 <span class="stock-status ${stockClass}">${stockText}</span>
             </div>
@@ -228,8 +223,8 @@ function attachImageLazyLoading() {
 }
 
 // ============== FILTER & SEARCH ==============
-
 function filterProducts(category) {
+    console.log('Filtering products by category:', category);
     showLoading();
     setTimeout(() => {
         const filtered = productController.filterByCategory(category);
@@ -241,6 +236,7 @@ function filterProducts(category) {
 
 function searchProducts() {
     const query = document.getElementById('searchInput')?.value || '';
+    console.log('Searching products:', query);
     showLoading();
     setTimeout(() => {
         const results = productController.searchProducts(query);
@@ -260,7 +256,6 @@ function updateActiveFilter(category) {
 }
 
 // ============== CART FUNCTIONS ==============
-
 function addToCart(productId) {
     const product = productController.getProductById(productId);
     if (!product) return;
@@ -315,17 +310,6 @@ function saveCart() {
     localStorage.setItem('cart', JSON.stringify(cart));
 }
 
-function loadCart() {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-        try {
-            cart = JSON.parse(savedCart);
-        } catch (e) {
-            cart = [];
-        }
-    }
-}
-
 function updateCartBadge() {
     if (!cartBadge) return;
     const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -367,10 +351,10 @@ function renderCart() {
     cartBody.innerHTML = `
         <div class="cart-items">
             ${cart.map(item => {
-                const imageUrl = productController.getImageUrl(item.image, '');
+                const imageUrl = productController.getImageUrl(item.image);
                 return `
                     <div class="cart-item">
-                        <img src="${imageUrl}" alt="${item.title}" class="cart-item-image">
+                        <img src="${imageUrl}" alt="${escapeHtml(item.title)}" class="cart-item-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E'">
                         <div class="cart-item-details">
                             <h4>${escapeHtml(item.title)}</h4>
                             <div class="cart-item-price">${productController.formatPrice(item.price)}</div>
@@ -415,7 +399,6 @@ function renderCart() {
 }
 
 // ============== AUTHENTICATION ==============
-
 async function checkAuthAndRestoreSession() {
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
@@ -467,7 +450,7 @@ async function handleLogin(event) {
         
         const data = await response.json();
         
-        if (response.ok && data.success) {
+        if (response.ok && data.success && data.token) {
             currentUser = data.user;
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
@@ -475,7 +458,6 @@ async function handleLogin(event) {
             updateUIForLoggedInUser();
             showToast(`Welcome back, ${currentUser.full_name}!`, 'success');
             
-            // Handle redirect after login
             const redirect = sessionStorage.getItem('redirectAfterLogin');
             if (redirect) {
                 sessionStorage.removeItem('redirectAfterLogin');
@@ -491,6 +473,7 @@ async function handleLogin(event) {
             throw new Error(data.message || 'Login failed');
         }
     } catch (error) {
+        console.error('Login error:', error);
         showToast(error.message, 'error');
     } finally {
         hideLoading();
@@ -529,6 +512,7 @@ async function handleRegister(event) {
             throw new Error(data.message || 'Registration failed');
         }
     } catch (error) {
+        console.error('Registration error:', error);
         showToast(error.message, 'error');
     } finally {
         hideLoading();
@@ -539,11 +523,11 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('cart');
-    currentUser = null;
     cart = [];
+    currentUser = null;
     updateCartBadge();
     updateUIForLoggedOutUser();
-    navigateTo('home');
+    renderProducts(productController.products);
     showToast('Logged out successfully', 'success');
 }
 
@@ -565,10 +549,10 @@ function switchAuthTab(tab) {
     });
 }
 
-// ============== NAVIGATION ==============
-
+// ============== NAVIGATION FUNCTIONS ==============
 function navigateTo(page) {
-    currentPage = page;
+    console.log('Navigating to:', page);
+    
     document.querySelectorAll('.footer-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.page === page);
     });
@@ -592,6 +576,8 @@ function navigateTo(page) {
         case 'profile':
             showProfile();
             break;
+        default:
+            renderProducts(productController.products);
     }
 }
 
@@ -615,7 +601,6 @@ function showFavorites() {
         openLoginModal();
         return;
     }
-    
     const favoriteProducts = productController.products.filter(p => favorites.includes(p.id));
     renderProducts(favoriteProducts);
 }
@@ -629,14 +614,12 @@ function showAbout() {
                 <h2>About KUKU YETU</h2>
             </div>
             <p>KUKU YETU is your premier destination for quality poultry products in Kenya. We specialize in providing the best broilers, layers, eggs, and chicks to farmers and businesses across the nation.</p>
-            
             <div class="contact-info">
                 <h3>Contact Us</h3>
                 <p><i class="fas fa-envelope"></i> info@kukuyetu.com</p>
                 <p><i class="fas fa-phone"></i> +254 112 402377</p>
                 <p><i class="fas fa-map-marker-alt"></i> Nairobi, Kenya</p>
             </div>
-            
             <div class="business-hours">
                 <h3>Business Hours</h3>
                 <p>Monday - Friday: 8:00 AM - 6:00 PM</p>
@@ -677,6 +660,7 @@ function showProfile() {
     `;
 }
 
+// ============== PRODUCT MODAL ==============
 function openProductModal(productId) {
     const product = productController.getProductById(productId);
     if (!product) return;
@@ -685,13 +669,12 @@ function openProductModal(productId) {
     const modalBody = document.getElementById('productModalBody');
     if (!modal || !modalBody) return;
     
-    const imageUrl = productController.getImageUrl(product.images?.[0], product.category);
-    const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 300\'%3E%3Crect width=\'400\' height=\'300\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
+    const imageUrl = productController.getImageUrl(product.images?.[0]);
     
     modalBody.innerHTML = `
         <div class="product-detail">
             <div class="product-detail-image">
-                <img src="${imageUrl}" alt="${product.title}" onerror="this.src='/assets/images/logo.png'">
+                <img src="${imageUrl}" alt="${escapeHtml(product.title)}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E'">
             </div>
             <div class="product-detail-info">
                 <h2>${escapeHtml(product.title)}</h2>
@@ -737,7 +720,6 @@ function proceedToCheckout(productId) {
 }
 
 // ============== NOTIFICATIONS ==============
-
 function startNotificationPolling() {
     if (!currentUser) return;
     loadNotifications();
@@ -819,7 +801,6 @@ function toggleNotificationPanel() {
 }
 
 // ============== LOCATION & ORDER ==============
-
 function getUserLocation() {
     if (!navigator.geolocation) {
         showToast('Geolocation not supported', 'error');
@@ -924,7 +905,13 @@ async function confirmOrder() {
             updateCartBadge();
             closeCartModal();
             showToast('✅ Order confirmed successfully!', 'success');
-            setTimeout(() => navigateTo('profile'), 2000);
+            
+            // Load updated notifications
+            loadNotifications();
+            
+            setTimeout(() => {
+                showProfile();
+            }, 2000);
         } else {
             throw new Error(result.message || 'Failed to create order');
         }
@@ -954,7 +941,6 @@ function orderViaWhatsApp() {
         return;
     }
     
-    const now = new Date();
     const itemsList = cart.map(item => 
         `• ${item.title} x${item.quantity || 1} = ${productController.formatPrice(parseFloat(item.price) * (item.quantity || 1))}`
     ).join('%0A');
@@ -975,7 +961,6 @@ function orderViaWhatsApp() {
 }
 
 // ============== ORDER HISTORY ==============
-
 async function viewOrderHistory() {
     if (!currentUser) {
         openLoginModal();
@@ -1040,11 +1025,10 @@ function displayOrderHistory(orders) {
 }
 
 function viewOrderDetails(orderId) {
-    showToast(`Viewing order #${orderId}`, 'info');
+    showToast(`Order #${orderId} details - Coming soon`, 'info');
 }
 
 // ============== UI HELPERS ==============
-
 function showLoading() {
     if (loadingSpinner) loadingSpinner.classList.add('active');
 }
@@ -1091,28 +1075,32 @@ function formatDate(dateString) {
 }
 
 // ============== EVENT LISTENERS ==============
-
 function setupEventListeners() {
-    // Side menu
-    document.getElementById('menuToggle')?.addEventListener('click', () => {
+    const menuToggle = document.getElementById('menuToggle');
+    const closeMenu = document.getElementById('closeMenu');
+    const notificationBtn = document.getElementById('notificationBtn');
+    const closeNotifications = document.getElementById('closeNotifications');
+    const searchInput = document.getElementById('searchInput');
+    const whatsappBtn = document.getElementById('whatsappBtn');
+    const supportBtn = document.getElementById('supportBtn');
+    
+    if (menuToggle) menuToggle.addEventListener('click', () => {
         document.getElementById('sideMenu')?.classList.add('active');
     });
-    document.getElementById('closeMenu')?.addEventListener('click', () => {
+    if (closeMenu) closeMenu.addEventListener('click', () => {
         document.getElementById('sideMenu')?.classList.remove('active');
     });
+    if (notificationBtn) notificationBtn.addEventListener('click', toggleNotificationPanel);
+    if (closeNotifications) closeNotifications.addEventListener('click', toggleNotificationPanel);
     
-    // Notifications
-    document.getElementById('notificationBtn')?.addEventListener('click', toggleNotificationPanel);
-    document.getElementById('closeNotifications')?.addEventListener('click', toggleNotificationPanel);
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => searchProducts(), 500);
+        });
+    }
     
-    // Search
-    let searchTimeout;
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => searchProducts(), 500);
-    });
-    
-    // Modal close buttons
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
             document.getElementById('productModal')?.classList.remove('active');
@@ -1121,7 +1109,6 @@ function setupEventListeners() {
         });
     });
     
-    // Click outside to close modals
     window.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal')) {
             e.target.classList.remove('active');
@@ -1129,16 +1116,12 @@ function setupEventListeners() {
         if (e.target.classList.contains('side-nav')) {
             e.target.classList.remove('active');
         }
-        if (e.target.classList.contains('notification-panel') && !e.target.contains(e.target)) {
-            document.getElementById('notificationPanel')?.classList.remove('active');
-        }
     });
     
-    // WhatsApp and Support
-    document.getElementById('whatsappBtn')?.addEventListener('click', () => {
+    if (whatsappBtn) whatsappBtn.addEventListener('click', () => {
         window.open('https://wa.me/254112402377', '_blank');
     });
-    document.getElementById('supportBtn')?.addEventListener('click', () => {
+    if (supportBtn) supportBtn.addEventListener('click', () => {
         window.open('https://wa.me/254112402377', '_blank');
     });
 }
@@ -1175,3 +1158,5 @@ window.orderViaWhatsApp = orderViaWhatsApp;
 window.generateReceipt = () => showToast('Receipt generation coming soon', 'info');
 window.toggleNotificationPanel = toggleNotificationPanel;
 window.markNotificationRead = markNotificationRead;
+
+console.log('✅ KUKU YETU main.js loaded successfully');
