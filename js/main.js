@@ -2,7 +2,6 @@
 // Uses API_BASE_URL from api.js
 
 // ============== GLOBAL IMAGE ERROR HANDLER ==============
-// This prevents 404 errors for missing images
 window.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG') {
         console.log('Image error blocked:', e.target.src);
@@ -264,11 +263,8 @@ function createProductCard(product) {
         stockText = 'Out of stock';
     }
     
-    // Get safe image URL
     const imagePath = product.images && product.images[0] ? product.images[0] : '';
     const imageUrl = getSafeImageUrl(imagePath);
-    
-    // Data URI placeholder (no external request)
     const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 200\'%3E%3Crect width=\'300\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
     
     return `
@@ -1135,16 +1131,24 @@ function startNotificationPolling() {
     notificationInterval = setInterval(loadNotifications, 10000);
 }
 
+// ============== FIXED NOTIFICATIONS FUNCTION ==============
 async function loadNotifications() {
     if (!currentUser) return;
 
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/users/notifications', {
+        // FIXED: Use /api/notifications instead of /api/users/notifications
+        const response = await fetch('/api/notifications', {
             headers: {
                 'x-auth-token': token
             }
         });
+        
+        // If endpoint doesn't exist, just return silently
+        if (response.status === 404) {
+            console.log('Notifications endpoint not available yet');
+            return;
+        }
         
         const data = await response.json();
         console.log('Notifications loaded:', data);
@@ -1154,8 +1158,6 @@ async function loadNotifications() {
             notifications = data.notifications;
         } else if (Array.isArray(data)) {
             notifications = data;
-        } else if (data.notifications) {
-            notifications = data.notifications;
         }
         
         renderNotifications(notifications);
@@ -1242,7 +1244,8 @@ function getNotificationIcon(title) {
 async function openNotification(notificationId) {
     try {
         const token = localStorage.getItem('token');
-        await fetch(`/api/users/notifications/${notificationId}/read`, {
+        // FIXED: Use /api/notifications instead of /api/users/notifications
+        await fetch(`/api/notifications/${notificationId}/read`, {
             method: 'PUT',
             headers: {
                 'x-auth-token': token
@@ -1683,14 +1686,14 @@ function generateReceiptHTML(order) {
             </div>
             
             <h3>Order Items</h3>
-            <table>
+             <table>
                 <thead>
-                    <tr>
+                     <tr>
                         <th>Item Description</th>
                         <th>Qty</th>
                         <th>Unit Price</th>
                         <th>Total</th>
-                    </thead>
+                    </tr>
                 </thead>
                 <tbody>
                     ${products.map(item => `
