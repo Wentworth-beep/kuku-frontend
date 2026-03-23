@@ -1,9 +1,14 @@
-// Admin specific JavaScript
+// Admin specific JavaScript// Admin specific JavaScript
 
 let currentOrders = [];
 let currentProducts = [];
 let currentEditingProduct = null;
 let imagesToRemove = [];
+
+// API Base URL
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000/api' 
+    : 'https://kuku-backend-ntr4.onrender.com/api';
 
 // Check if admin is logged in
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,8 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupAdminEventListeners();
 });
+ 
 
-function setupAdminEventListeners() {
+
     // Admin login
     const loginForm = document.getElementById('adminLoginForm');
     if (loginForm) {
