@@ -5,7 +5,7 @@ let currentProducts = [];
 let currentEditingProduct = null;
 let imagesToRemove = [];
 
-// Check if admin is logged in
+// ============= INITIALIZATION =============
 document.addEventListener('DOMContentLoaded', () => {
     // Add data URI favicon to prevent 404
     if (!document.querySelector('link[rel="icon"]')) {
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdminEventListeners();
 });
 
+// ============= SETUP EVENT LISTENERS =============
 function setupAdminEventListeners() {
     // Admin login
     const loginForm = document.getElementById('adminLoginForm');
@@ -37,7 +38,7 @@ function setupAdminEventListeners() {
     document.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const tab = btn.dataset.tab;
-            switchAdminTab(tab);
+            showTab(tab);
         });
     });
 
@@ -74,8 +75,39 @@ function setupAdminEventListeners() {
     }
 }
 
-// ============= AUTHENTICATION =============
+// ============= TAB MANAGEMENT =============
+function showTab(tab) {
+    console.log('showTab called with:', tab);
+    
+    // Update tab buttons
+    document.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
 
+    // Update tab content
+    document.querySelectorAll('.admin-tab').forEach(tabEl => {
+        if (tabEl.id === tab + 'Tab') {
+            tabEl.classList.add('active');
+        } else {
+            tabEl.classList.remove('active');
+        }
+    });
+
+    // Load data for specific tabs
+    if (tab === 'products') {
+        loadProducts();
+    } else if (tab === 'orders') {
+        loadAllOrders();
+    } else if (tab === 'dashboard') {
+        loadDashboardData();
+    }
+}
+
+// ============= AUTHENTICATION =============
 async function handleAdminLogin(e) {
     e.preventDefault();
     
@@ -141,29 +173,7 @@ function adminLogout() {
     showToast('Logged out successfully', 'success');
 }
 
-// ============= TAB SWITCHING =============
-
-function switchAdminTab(tab) {
-    // Update tab buttons
-    document.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
-    });
-
-    // Update tab content
-    document.querySelectorAll('.admin-tab').forEach(tabEl => {
-        tabEl.classList.toggle('active', tabEl.id === tab + 'Tab');
-    });
-
-    // Load data for specific tabs
-    if (tab === 'products') {
-        loadProducts();
-    } else if (tab === 'orders') {
-        loadAllOrders();
-    }
-}
-
 // ============= DASHBOARD FUNCTIONS =============
-
 async function loadDashboardData() {
     showLoading();
     try {
@@ -217,7 +227,6 @@ function updateDashboardStats(orders, products) {
 }
 
 // ============= PRODUCT FUNCTIONS =============
-
 async function loadProducts() {
     showLoading();
     try {
@@ -236,8 +245,12 @@ async function loadProducts() {
 function getImageUrl(imagePath) {
     if (!imagePath) return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
     if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/')) return imagePath;
-    return '/' + imagePath;
+    // Use the full backend URL for images
+    const backendBase = 'https://kuku-backend-ntr4.onrender.com';
+    if (imagePath.startsWith('/')) {
+        return backendBase + imagePath;
+    }
+    return backendBase + '/' + imagePath;
 }
 
 function renderProductsTable(products) {
@@ -245,7 +258,7 @@ function renderProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td><tr>';
+        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td></tr>';
         return;
     }
 
@@ -289,7 +302,6 @@ function renderProductsTable(products) {
 }
 
 // ============= ORDER FUNCTIONS =============
-
 async function loadAllOrders() {
     showLoading();
     try {
@@ -382,7 +394,6 @@ function loadRecentOrders(orders) {
 }
 
 // ============= DELETE ORDER FUNCTION =============
-
 async function deleteOrder(orderId) {
     if (!confirm('⚠️ Are you sure you want to permanently delete this order? This action cannot be undone.')) {
         return;
@@ -401,6 +412,12 @@ async function deleteOrder(orderId) {
         if (response.status === 404) {
             showToast('Order already deleted or not found', 'info');
             loadDashboardData();
+            return;
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            showToast('Authentication failed. Please login again.', 'error');
+            adminLogout();
             return;
         }
 
@@ -425,7 +442,6 @@ async function deleteOrder(orderId) {
 }
 
 // ============= ADD PRODUCT FUNCTIONS =============
-
 function openAddProductModal() {
     const modal = document.getElementById('addProductModal');
     const form = document.getElementById('addProductForm');
@@ -539,7 +555,6 @@ async function handleAddProduct(e) {
 }
 
 // ============= EDIT PRODUCT FUNCTIONS =============
-
 async function openEditProductModal(productId) {
     showLoading();
     imagesToRemove = [];
@@ -559,14 +574,30 @@ async function openEditProductModal(productId) {
         
         currentEditingProduct = product;
         
-        document.getElementById('editProductId').value = product.id;
-        document.getElementById('editProductTitle').value = product.title || '';
-        document.getElementById('editProductPrice').value = product.price || '';
-        document.getElementById('editProductOldPrice').value = product.old_price || '';
-        document.getElementById('editProductDescription').value = product.description || '';
-        document.getElementById('editProductCategory').value = product.category || '';
-        document.getElementById('editProductStock').value = product.stock_status || 'available';
-        document.getElementById('editProductRating').value = product.rating || '4';
+        // Check if edit form elements exist
+        const editProductId = document.getElementById('editProductId');
+        const editProductTitle = document.getElementById('editProductTitle');
+        const editProductPrice = document.getElementById('editProductPrice');
+        const editProductOldPrice = document.getElementById('editProductOldPrice');
+        const editProductDescription = document.getElementById('editProductDescription');
+        const editProductCategory = document.getElementById('editProductCategory');
+        const editProductStock = document.getElementById('editProductStock');
+        const editProductRating = document.getElementById('editProductRating');
+        
+        if (!editProductId || !editProductTitle || !editProductPrice || !editProductDescription) {
+            console.error('Edit form elements not found');
+            showToast('Edit form not ready', 'error');
+            return;
+        }
+        
+        editProductId.value = product.id;
+        editProductTitle.value = product.title || '';
+        editProductPrice.value = product.price || '';
+        if (editProductOldPrice) editProductOldPrice.value = product.old_price || '';
+        editProductDescription.value = product.description || '';
+        if (editProductCategory) editProductCategory.value = product.category || '';
+        if (editProductStock) editProductStock.value = product.stock_status || 'available';
+        if (editProductRating) editProductRating.value = product.rating || '4';
         
         const previewDiv = document.getElementById('editImagePreview');
         if (previewDiv) {
@@ -709,7 +740,6 @@ async function handleEditProduct(e) {
 }
 
 // ============= DELETE PRODUCT FUNCTION =============
-
 async function deleteProduct(productId) {
     if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
         return;
@@ -742,7 +772,6 @@ async function deleteProduct(productId) {
 }
 
 // ============= ORDER MANAGEMENT =============
-
 async function viewOrderDetails(orderId) {
     showLoading();
     try {
@@ -883,6 +912,12 @@ async function updateOrderStatus(orderId, status) {
             return;
         }
 
+        if (response.status === 401 || response.status === 403) {
+            showToast('Authentication failed. Please login again.', 'error');
+            adminLogout();
+            return;
+        }
+
         const result = await response.json();
         
         if (response.ok && result.success) {
@@ -958,26 +993,26 @@ function generateOrderReceipt(orderId) {
                     
                     <div class="section">
                         <h3>Order Items</h3>
-                        <table>
+                         <table>
                             <thead>
-                                <tr>
+                                 <tr>
                                     <th>Product</th>
                                     <th>Quantity</th>
                                     <th>Unit Price</th>
                                     <th>Total</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody>
                                 ${products.map(item => `
-                                    <tr>
+                                     <tr>
                                         <td>${item.title || 'N/A'}</td>
                                         <td>${item.quantity || 0}</td>
                                         <td>Ksh ${item.price || 0}</td>
                                         <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                                    </tr>
+                                     </tr>
                                 `).join('')}
                             </tbody>
-                        能有
+                         </table>
                         <p class="total">Total Amount: Ksh ${order.total_amount || 0}</p>
                     </div>
                     
@@ -1012,7 +1047,6 @@ function cancelOrder(orderId) {
 }
 
 // ============= API FUNCTIONS =============
-
 async function getProducts() {
     try {
         const response = await fetch('/api/products');
@@ -1038,17 +1072,17 @@ async function getAllOrders() {
             }
         });
         
+        if (response.status === 401 || response.status === 403) {
+            console.warn('Authentication failed for orders endpoint');
+            return [];
+        }
+        
         if (response.status === 404) {
-            console.warn('Orders endpoint not found - returning empty array');
+            console.warn('Orders endpoint not found');
             return [];
         }
         
         if (!response.ok) {
-            if (response.status === 401) {
-                showToast('Session expired. Please login again.', 'error');
-                adminLogout();
-                return [];
-            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
@@ -1073,6 +1107,11 @@ async function getOrder(orderId) {
             }
         });
         
+        if (response.status === 401 || response.status === 403) {
+            console.warn('Authentication failed for order');
+            return null;
+        }
+        
         if (response.status === 404) {
             return null;
         }
@@ -1090,7 +1129,6 @@ async function getOrder(orderId) {
 }
 
 // ============= UTILITY FUNCTIONS =============
-
 function showLoading() {
     const spinner = document.getElementById('loading-spinner');
     if (spinner) spinner.classList.add('active');
@@ -1125,7 +1163,7 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Export for global access
+// ============= GLOBAL EXPOSURE =============
 window.openAddProductModal = openAddProductModal;
 window.openEditProductModal = openEditProductModal;
 window.removeExistingImage = removeExistingImage;
@@ -1136,3 +1174,4 @@ window.deleteProduct = deleteProduct;
 window.cancelOrder = cancelOrder;
 window.deleteOrder = deleteOrder;
 window.adminLogout = adminLogout;
+window.showTab = showTab;
