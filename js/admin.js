@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoginForm();
     }
     
-    // Remove favicon errors - create data URI favicon if missing
+    // Add favicon to prevent 404
     if (!document.querySelector('link[rel="icon"]')) {
         const favicon = document.createElement('link');
         favicon.rel = 'icon';
@@ -34,13 +34,13 @@ async function verifyAdmin(token) {
         });
         const data = await response.json();
         
-        // FIX: Use is_admin (with underscore)
         if (data.user && data.user.is_admin === true) {
             adminToken = token;
             console.log('✅ Admin verified:', data.user.email);
             showDashboard();
             loadDashboardData();
         } else {
+            console.log('❌ Not an admin, showing login form');
             localStorage.removeItem('adminToken');
             showLoginForm();
         }
@@ -65,7 +65,7 @@ function showDashboard() {
     if (dashboardEl) dashboardEl.style.display = 'flex';
 }
 
-// FIXED ADMIN LOGIN FUNCTION
+// ============== FIXED ADMIN LOGIN FUNCTION ==============
 async function adminLogin(event) {
     event.preventDefault();
     
@@ -96,15 +96,16 @@ async function adminLogin(event) {
         const result = await response.json();
         console.log('📡 Login response:', result);
         
-        // FIX: Use is_admin (with underscore) not isAdmin
-        if (result.token && result.user && result.user.is_admin === true) {
+        // FIX: Check success === true AND token exists
+        if (result.success === true && result.token) {
             localStorage.setItem('adminToken', result.token);
             adminToken = result.token;
+            console.log('✅ Login successful!');
             showAdminNotification('Login successful!', 'success');
             showDashboard();
             loadDashboardData();
         } else {
-            console.error('Login failed:', result);
+            console.error('❌ Login failed:', result);
             showAdminNotification(result.message || 'Invalid credentials', 'error');
         }
     } catch (error) {
@@ -129,20 +130,32 @@ function adminLogout() {
 async function loadDashboardData() {
     showAdminLoader();
     try {
-        const [ordersRes, productsRes] = await Promise.all([
-            fetch('/api/orders', { headers: { 'x-auth-token': adminToken } }),
-            fetch('/api/products')
-        ]);
+        console.log('📊 Loading dashboard data...');
         
-        orders = await ordersRes.json();
-        products = await productsRes.json();
+        // Fetch orders
+        const ordersResponse = await fetch('/api/orders', {
+            headers: { 'x-auth-token': adminToken }
+        });
+        orders = await ordersResponse.json();
+        console.log(`📦 Orders loaded: ${orders.length}`);
         
+        // Fetch products
+        const productsResponse = await fetch('/api/products');
+        products = await productsResponse.json();
+        console.log(`📦 Products loaded: ${products.length}`);
+        
+        // Update stats
         document.getElementById('totalOrders').textContent = orders.length || 0;
         document.getElementById('totalProducts').textContent = products.length || 0;
-        document.getElementById('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length || 0;
+        
+        const pendingOrders = orders.filter(o => o.status === 'pending').length;
+        document.getElementById('pendingOrders').textContent = pendingOrders || 0;
+        
+        const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
+        document.getElementById('completedOrders').textContent = completedOrders || 0;
         
         displayRecentOrders(orders.slice(0, 5));
-        displayProductsTable(products);
+        
     } catch (error) {
         console.error('Dashboard error:', error);
         showAdminNotification('Failed to load dashboard', 'error');
@@ -156,7 +169,7 @@ function displayRecentOrders(recentOrders) {
     if (!tbody) return;
     
     if (!recentOrders || recentOrders.length === 0) {
-        tbody.innerHTML = '}<td colspan="6">No recent orders</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No recent orders</td></tr>';
         return;
     }
     
@@ -168,7 +181,7 @@ function displayRecentOrders(recentOrders) {
             <td><span class="status-badge ${order.status}">${order.status || 'pending'}</span></td>
             <td>${new Date(order.created_at).toLocaleDateString()}</td>
             <td><button onclick="viewOrder(${order.id})" class="btn-sm">View</button></td>
-         </tr>
+        </tr>
     `).join('');
 }
 
@@ -176,10 +189,12 @@ function displayRecentOrders(recentOrders) {
 async function loadProducts() {
     showAdminLoader();
     try {
+        console.log('📦 Loading products...');
         const response = await fetch('/api/products');
         products = await response.json();
         displayProductsTable(products);
     } catch (error) {
+        console.error('Products error:', error);
         showAdminNotification('Failed to load products', 'error');
     } finally {
         hideAdminLoader();
@@ -191,7 +206,7 @@ function displayProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '}<td colspan="8">No products found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No products found</td></tr>';
         return;
     }
     
@@ -207,8 +222,8 @@ function displayProductsTable(products) {
             <td>
                 <button onclick="editProduct(${product.id})" class="btn-edit">Edit</button>
                 <button onclick="deleteProduct(${product.id})" class="btn-delete">Delete</button>
-             </td>
-         </tr>
+            </td>
+        </tr>
     `).join('');
 }
 
@@ -233,25 +248,38 @@ function closeProductModal() {
 async function saveProduct(event) {
     event.preventDefault();
     
-    const productId = document.getElementById('productId').value;
-    const formData = new FormData();
-    formData.append('title', document.getElementById('productTitle').value);
-    formData.append('price', document.getElementById('productPrice').value);
-    formData.append('oldPrice', document.getElementById('productOldPrice').value || '');
-    formData.append('description', document.getElementById('productDescription').value);
-    formData.append('category', document.getElementById('productCategory').value);
-    formData.append('stockStatus', document.getElementById('productStock').value);
-    formData.append('rating', document.getElementById('productRating').value);
-    
-    const images = document.getElementById('productImages').files;
-    for (let i = 0; i < images.length; i++) {
-        formData.append('images', images[i]);
+    if (!adminToken) {
+        showAdminNotification('Please login first', 'error');
+        return;
     }
     
-    const url = productId ? `/api/products/${productId}` : '/api/products';
-    const method = productId ? 'PUT' : 'POST';
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn?.textContent;
     
     try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+        }
+        
+        const productId = document.getElementById('productId').value;
+        const formData = new FormData();
+        formData.append('title', document.getElementById('productTitle').value);
+        formData.append('price', document.getElementById('productPrice').value);
+        formData.append('oldPrice', document.getElementById('productOldPrice').value || '');
+        formData.append('description', document.getElementById('productDescription').value);
+        formData.append('category', document.getElementById('productCategory').value);
+        formData.append('stockStatus', document.getElementById('productStock').value);
+        formData.append('rating', document.getElementById('productRating').value);
+        
+        const images = document.getElementById('productImages').files;
+        for (let i = 0; i < images.length; i++) {
+            formData.append('images', images[i]);
+        }
+        
+        const url = productId ? `/api/products/${productId}` : '/api/products';
+        const method = productId ? 'PUT' : 'POST';
+        
         const response = await fetch(url, {
             method,
             headers: { 'x-auth-token': adminToken },
@@ -260,7 +288,7 @@ async function saveProduct(event) {
         
         const result = await response.json();
         
-        if (response.ok) {
+        if (response.ok && result.success) {
             showAdminNotification(productId ? 'Product updated!' : 'Product added!', 'success');
             closeProductModal();
             loadProducts();
@@ -268,12 +296,19 @@ async function saveProduct(event) {
             showAdminNotification(result.msg || 'Failed to save product', 'error');
         }
     } catch (error) {
+        console.error('Save product error:', error);
         showAdminNotification('Error saving product', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText || 'Save Product';
+        }
     }
 }
 
 async function editProduct(productId) {
     try {
+        showAdminLoader();
         const response = await fetch(`/api/products/${productId}`);
         const product = await response.json();
         
@@ -288,7 +323,10 @@ async function editProduct(productId) {
         
         openAddProductModal();
     } catch (error) {
+        console.error('Edit product error:', error);
         showAdminNotification('Failed to load product', 'error');
+    } finally {
+        hideAdminLoader();
     }
 }
 
@@ -308,6 +346,7 @@ async function deleteProduct(productId) {
             showAdminNotification('Failed to delete product', 'error');
         }
     } catch (error) {
+        console.error('Delete product error:', error);
         showAdminNotification('Error deleting product', 'error');
     }
 }
@@ -316,12 +355,14 @@ async function deleteProduct(productId) {
 async function loadOrders() {
     showAdminLoader();
     try {
+        console.log('📦 Loading orders...');
         const response = await fetch('/api/orders', {
             headers: { 'x-auth-token': adminToken }
         });
         orders = await response.json();
         displayOrdersTable(orders);
     } catch (error) {
+        console.error('Orders error:', error);
         showAdminNotification('Failed to load orders', 'error');
     } finally {
         hideAdminLoader();
@@ -329,11 +370,11 @@ async function loadOrders() {
 }
 
 function displayOrdersTable(orders) {
-    const tbody = document.getElementById('ordersBody');
+    const tbody = document.getElementById('allOrdersBody');
     if (!tbody) return;
     
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = '}<td colspan="8">No orders found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No orders found</td></tr>';
         return;
     }
     
@@ -342,12 +383,11 @@ function displayOrdersTable(orders) {
             <td>${order.order_number || order.id}</td>
             <td>${order.customer_name || 'N/A'}</td>
             <td>${order.phone || 'N/A'}</td>
+            <td>${order.location || 'N/A'}</td>
             <td>${order.products?.length || 0} items</td>
-            <td>Ksh ${parseFloat(order.total_amount || 0).toFixed(2)}</td>
             <td><span class="status-badge ${order.status}">${order.status || 'pending'}</span></td>
-            <td>${new Date(order.created_at).toLocaleDateString()}</td>
             <td><button onclick="viewOrder(${order.id})" class="btn-sm">View</button></td>
-         </tr>
+        </tr>
     `).join('');
 }
 
@@ -359,6 +399,10 @@ async function viewOrder(orderId) {
     const detailsDiv = document.getElementById('orderDetails');
     if (!detailsDiv) return;
     
+    const productsHtml = order.products && order.products.length > 0 
+        ? order.products.map(p => `<li>${p.title} x${p.quantity} - Ksh ${parseFloat(p.price).toFixed(2)}</li>`).join('')
+        : '<li>No products</li>';
+    
     detailsDiv.innerHTML = `
         <div class="order-detail">
             <p><strong>Order #:</strong> ${order.order_number || order.id}</p>
@@ -369,7 +413,7 @@ async function viewOrder(orderId) {
             <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
             <p><strong>Status:</strong> ${order.status}</p>
             <h4>Products:</h4>
-            <ul>${order.products?.map(p => `<li>${p.title} x${p.quantity} - Ksh ${parseFloat(p.price).toFixed(2)}</li>`).join('') || '<li>No products</li>'}</ul>
+            <ul>${productsHtml}</ul>
             <p><strong>Total:</strong> Ksh ${parseFloat(order.total_amount).toFixed(2)}</p>
         </div>
     `;
@@ -404,27 +448,38 @@ async function updateOrderStatus(status) {
             showAdminNotification('Failed to update order', 'error');
         }
     } catch (error) {
+        console.error('Update order error:', error);
         showAdminNotification('Error updating order', 'error');
     }
 }
 
 // ============== SECTION MANAGEMENT ==============
-function showSection(section) {
-    document.querySelectorAll('.sidebar nav a').forEach(link => {
-        link.classList.remove('active');
+function showTab(tab) {
+    // Update active tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
-    document.querySelectorAll('.content-section').forEach(s => {
-        s.classList.remove('active');
+    // Show selected tab content
+    document.querySelectorAll('.admin-tab').forEach(tabContent => {
+        tabContent.classList.remove('active');
     });
-    document.getElementById(`${section}Section`).classList.add('active');
     
-    switch(section) {
-        case 'dashboard': loadDashboardData(); break;
-        case 'products': loadProducts(); break;
-        case 'orders': loadOrders(); break;
+    if (tab === 'dashboard') {
+        document.getElementById('dashboardTab').classList.add('active');
+        loadDashboardData();
+    } else if (tab === 'products') {
+        document.getElementById('productsTab').classList.add('active');
+        loadProducts();
+    } else if (tab === 'orders') {
+        document.getElementById('ordersTab').classList.add('active');
+        loadOrders();
     }
+}
+
+function showSection(section) {
+    showTab(section);
 }
 
 // ============== UI HELPERS ==============
@@ -437,6 +492,7 @@ function showAdminNotification(message, type) {
         background: ${type === 'success' ? '#4caf50' : '#f44336'};
         color: white; border-radius: 5px; z-index: 10000; animation: fadeIn 0.3s;
         font-family: Arial, sans-serif; font-size: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     `;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
@@ -448,7 +504,7 @@ function showAdminLoader() {
         loader = document.createElement('div');
         loader.id = 'adminLoader';
         loader.innerHTML = '<div class="spinner"></div>';
-        loader.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;';
+        loader.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;';
         document.body.appendChild(loader);
     }
 }
@@ -461,6 +517,7 @@ function hideAdminLoader() {
 // ============== GLOBAL EXPOSURE ==============
 window.adminLogin = adminLogin;
 window.adminLogout = adminLogout;
+window.showTab = showTab;
 window.showSection = showSection;
 window.openAddProductModal = openAddProductModal;
 window.closeProductModal = closeProductModal;
@@ -470,3 +527,8 @@ window.deleteProduct = deleteProduct;
 window.viewOrder = viewOrder;
 window.closeOrderModal = closeOrderModal;
 window.updateOrderStatus = updateOrderStatus;
+window.loadProducts = loadProducts;
+window.loadOrders = loadOrders;
+window.loadDashboardData = loadDashboardData;
+
+console.log('✅ Admin panel ready');
