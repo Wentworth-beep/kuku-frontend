@@ -1,3 +1,96 @@
+// ============== FRONTEND PRODUCT CONTROLLER ==============
+// This calls YOUR BACKEND API at https://kuku-backend-ntr4.onrender.com/api/products
+
+class FrontendProductController {
+    constructor() {
+        this.products = [];
+        this.categories = ['broilers', 'layers', 'eggs', 'chicks'];
+        this.apiBase = 'https://kuku-backend-ntr4.onrender.com/api';
+    }
+
+    async fetchProducts() {
+        try {
+            console.log('📦 Fetching products from backend...');
+            const response = await fetch(`${this.apiBase}/products`);
+            const data = await response.json();
+            
+            // Handle different response formats from your backend
+            if (data.success === true && data.products) {
+                this.products = data.products;
+            } else if (Array.isArray(data)) {
+                this.products = data;
+            } else if (data.products && Array.isArray(data.products)) {
+                this.products = data.products;
+            } else {
+                console.warn('Unexpected response format:', data);
+                this.products = [];
+            }
+            
+            console.log(`✅ Loaded ${this.products.length} products`);
+            return this.products;
+        } catch (error) {
+            console.error('❌ Failed to fetch products:', error);
+            this.products = [];
+            return [];
+        }
+    }
+
+    getProductById(id) {
+        return this.products.find(p => p.id === parseInt(id));
+    }
+
+    filterByCategory(category) {
+        if (category === 'all') return this.products;
+        return this.products.filter(p => p.category === category);
+    }
+
+    searchProducts(query) {
+        if (!query || query.trim() === '') return this.products;
+        const term = query.toLowerCase().trim();
+        return this.products.filter(p => 
+            (p.title?.toLowerCase() || '').includes(term) ||
+            (p.description?.toLowerCase() || '').includes(term) ||
+            (p.category?.toLowerCase() || '').includes(term)
+        );
+    }
+
+    getImageUrl(imagePath) {
+        if (!imagePath) return '/assets/images/logo.png';
+        if (imagePath.startsWith('http')) return imagePath;
+        
+        // Clean the path
+        let cleanPath = imagePath;
+        if (cleanPath.startsWith('{{') && cleanPath.endsWith('}}')) {
+            cleanPath = cleanPath.slice(1, -1);
+        }
+        if (cleanPath.startsWith('/')) {
+            cleanPath = cleanPath.slice(1);
+        }
+        
+        // Use your backend base URL for images
+        return `https://kuku-backend-ntr4.onrender.com/${cleanPath}`;
+    }
+
+    formatPrice(price) {
+        return `Ksh ${parseFloat(price || 0).toFixed(2)}`;
+    }
+
+    generateStars(rating) {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        const emptyStars = 5 - Math.ceil(rating);
+        
+        let stars = '';
+        for (let i = 0; i < fullStars; i++) stars += '<i class="fas fa-star"></i>';
+        if (halfStar) stars += '<i class="fas fa-star-half-alt"></i>';
+        for (let i = 0; i < emptyStars; i++) stars += '<i class="far fa-star"></i>';
+        return stars;
+    }
+}
+
+// Create global instance
+const productController = new FrontendProductController();
+window.productController = productController;
 // ============== KUKU YETU MAIN APPLICATION ==============
 
 // Global variables
