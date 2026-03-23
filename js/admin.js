@@ -1,11 +1,11 @@
-// Admin specific JavaScript// Admin specific JavaScript
+// Admin specific JavaScript
 
 let currentOrders = [];
 let currentProducts = [];
 let currentEditingProduct = null;
 let imagesToRemove = [];
 
-// API Base URL
+// API Base URL - uses the one from api.js, but we need it here too
 const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000/api' 
     : 'https://kuku-backend-ntr4.onrender.com/api';
@@ -30,9 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupAdminEventListeners();
 });
- 
 
-
+function setupAdminEventListeners() {
     // Admin login
     const loginForm = document.getElementById('adminLoginForm');
     if (loginForm) {
@@ -92,7 +91,6 @@ async function handleAdminLogin(e) {
 
     showLoading();
     try {
-        // CORRECTED: Use /auth/login instead of /auth/admin/login
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: {
@@ -110,6 +108,8 @@ async function handleAdminLogin(e) {
             showAdminDashboard();
             loadDashboardData();
             showToast('Login successful!', 'success');
+            // Clear password field for security
+            document.getElementById('adminPassword').value = '';
         } else {
             showToast(data.message || 'Login failed: Invalid credentials', 'error');
         }
@@ -126,6 +126,10 @@ function showAdminLogin() {
     const dashboardDiv = document.getElementById('adminDashboard');
     if (loginDiv) loginDiv.style.display = 'flex';
     if (dashboardDiv) dashboardDiv.style.display = 'none';
+    
+    // Clear password field for security
+    const passwordField = document.getElementById('adminPassword');
+    if (passwordField) passwordField.value = '';
 }
 
 function showAdminDashboard() {
@@ -233,12 +237,11 @@ function renderProductsTable(products) {
     if (!tbody) return;
     
     if (products.length === 0) {
-        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td></tr>';
+        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td><tr>';
         return;
     }
 
     tbody.innerHTML = products.map(product => {
-        // Fix image URL with proper fallback
         let imageUrl = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
         
         if (product.images && product.images[0]) {
@@ -253,7 +256,7 @@ function renderProductsTable(products) {
                          alt="${product.title || 'Product'}" 
                          style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"
                          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E'">
-                 </td>
+                </td>
                 <td>${product.title || 'N/A'}</td>
                 <td>${product.category || 'N/A'}</td>
                 <td>Ksh ${product.price || 0}</td>
@@ -262,7 +265,7 @@ function renderProductsTable(products) {
                         ${product.stock_status === 'low' ? 'Few Units' : 
                           product.stock_status === 'available' ? 'In Stock' : 'Out of Stock'}
                     </span>
-                 </td>
+                </td>
                 <td>${product.rating || 0} ★</td>
                 <td>
                     <button class="btn-view" onclick="openEditProductModal(${product.id})" style="margin-right: 5px; background: #2196f3;">
@@ -271,8 +274,8 @@ function renderProductsTable(products) {
                     <button class="btn-view" onclick="deleteProduct(${product.id})" style="background: #f44336;">
                         <i class="fas fa-trash"></i> Delete
                     </button>
-                 </td>
-             </tr>
+                </td>
+            </tr>
         `;
     }).join('');
 }
@@ -297,7 +300,7 @@ function renderAllOrdersTable(orders) {
     if (!tbody) return;
     
     if (orders.length === 0) {
-        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No orders found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No orders found</td></tr>';
         return;
     }
 
@@ -311,22 +314,22 @@ function renderAllOrdersTable(orders) {
         const productNames = products.map(p => p.title).join(', ');
 
         return `
-             <tr>
-                 <td>${order.order_id || 'N/A'}</td>
-                 <td>${order.customer_name || 'N/A'}</td>
-                 <td>${order.phone || 'N/A'}</td>
-                 <td>${order.location || 'N/A'}</td>
-                 <td>${productNames.substring(0, 30)}${productNames.length > 30 ? '...' : ''}</td>
-                 <td><span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></td>
-                 <td>
+            <tr>
+                <td>${order.order_id || 'N/A'}</td>
+                <td>${order.customer_name || 'N/A'}</td>
+                <td>${order.phone || 'N/A'}</td>
+                <td>${order.location || 'N/A'}</td>
+                <td>${productNames.substring(0, 30)}${productNames.length > 30 ? '...' : ''}</td>
+                <td><span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></td>
+                <td>
                     <button class="btn-view" onclick="viewOrderDetails(${order.id})" style="margin-right: 5px; background: #4caf50;" title="View Details">
                         <i class="fas fa-eye"></i>
                     </button>
                     <button class="btn-view" onclick="deleteOrder(${order.id})" style="background: #f44336;" title="Delete Order">
                         <i class="fas fa-trash"></i>
                     </button>
-                 </td>
-             </tr>
+                </td>
+            </tr>
         `;
     }).join('');
 }
@@ -336,7 +339,7 @@ function loadRecentOrders(orders) {
     if (!tbody) return;
     
     if (orders.length === 0) {
-        tbody.innerHTML = '}<td colspan="7" style="text-align: center;">No orders found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No orders found</td></tr>';
         return;
     }
 
@@ -350,21 +353,21 @@ function loadRecentOrders(orders) {
         const productNames = products.map(p => p.title).join(', ');
 
         return `
-             <tr>
-                 <td>${order.order_id || 'N/A'}</td>
-                 <td>${order.customer_name || 'N/A'}</td>
-                 <td>Ksh ${order.total_amount || 0}</td>
-                 <td><span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></td>
-                 <td>${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</td>
-                 <td>
+            <tr>
+                <td>${order.order_id || 'N/A'}</td>
+                <td>${order.customer_name || 'N/A'}</td>
+                <td>Ksh ${order.total_amount || 0}</td>
+                <td><span class="status-badge ${order.status || 'pending'}">${order.status || 'pending'}</span></td>
+                <td>${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</td>
+                <td>
                     <button class="btn-view" onclick="viewOrderDetails(${order.id})" style="margin-right: 5px; background: #4caf50;" title="View Details">
                         <i class="fas fa-eye"></i>
                     </button>
                     <button class="btn-view" onclick="deleteOrder(${order.id})" style="background: #f44336;" title="Delete Order">
                         <i class="fas fa-trash"></i>
                     </button>
-                 </td>
-             </tr>
+                </td>
+            </tr>
         `;
     }).join('');
 }
@@ -772,28 +775,28 @@ function renderOrderDetails(order) {
                 <h3>Order Items</h3>
                 <table class="items-table">
                     <thead>
-                         <tr>
+                        <tr>
                             <th>Product</th>
                             <th>Quantity</th>
                             <th>Price</th>
                             <th>Total</th>
-                         </tr>
+                        </tr>
                     </thead>
                     <tbody>
                         ${products.map(item => `
-                             <tr>
+                            <tr>
                                 <td>${item.title || 'N/A'}</td>
                                 <td>${item.quantity || 0}</td>
                                 <td>Ksh ${item.price || 0}</td>
                                 <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                             </tr>
+                            </tr>
                         `).join('')}
                     </tbody>
                     <tfoot>
-                         <tr>
+                        <tr>
                             <td colspan="3"><strong>Total</strong></td>
                             <td><strong>Ksh ${order.total_amount || 0}</strong></td>
-                         </tr>
+                        </tr>
                     </tfoot>
                 </table>
             </div>
@@ -930,21 +933,21 @@ function generateOrderReceipt(orderId) {
                         <h3>Order Items</h3>
                         <table>
                             <thead>
-                                 <tr>
+                                <tr>
                                     <th>Product</th>
                                     <th>Quantity</th>
                                     <th>Unit Price</th>
                                     <th>Total</th>
-                                 </tr>
+                                </tr>
                             </thead>
                             <tbody>
                                 ${products.map(item => `
-                                     <tr>
+                                    <tr>
                                         <td>${item.title || 'N/A'}</td>
                                         <td>${item.quantity || 0}</td>
                                         <td>Ksh ${item.price || 0}</td>
                                         <td>Ksh ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                                     </tr>
+                                    </tr>
                                 `).join('')}
                             </tbody>
                         </table>
