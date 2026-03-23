@@ -1240,35 +1240,65 @@ function getNotificationIcon(title) {
         return '📢';
     }
 }
-
 async function openNotification(notificationId) {
     try {
         const token = localStorage.getItem('token');
-        // FIXED: Use /api/notifications instead of /api/users/notifications
-        await fetch(`/api/notifications/${notificationId}/read`, {
+        if (!token) {
+            console.log('No token found');
+            return;
+        }
+        
+        console.log(`📬 Marking notification ${notificationId} as read...`);
+        
+        // Call the API to mark as read
+        const response = await fetch(`/api/notifications/${notificationId}/read`, {
             method: 'PUT',
             headers: {
-                'x-auth-token': token
+                'x-auth-token': token,
+                'Content-Type': 'application/json'
             }
         });
         
-        const notificationElement = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
-        if (notificationElement) {
-            notificationElement.classList.remove('unread');
-            notificationElement.classList.add('read');
-            notificationElement.style.background = 'white';
-            notificationElement.style.borderLeft = 'none';
+        if (response.ok) {
+            console.log(`✅ Notification ${notificationId} marked as read`);
             
-            const dot = notificationElement.querySelector('span:last-child');
-            if (dot) dot.remove();
+            // Update the UI immediately
+            const notificationElement = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+            if (notificationElement) {
+                notificationElement.classList.remove('unread');
+                notificationElement.classList.add('read');
+                notificationElement.style.background = 'white';
+                notificationElement.style.borderLeft = 'none';
+                
+                // Remove the unread dot
+                const dot = notificationElement.querySelector('span:last-child');
+                if (dot && dot.style.background === 'rgb(76, 175, 80)') {
+                    dot.remove();
+                }
+            }
+            
+            // Update badge count
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                let currentCount = parseInt(badge.textContent) || 0;
+                currentCount = Math.max(0, currentCount - 1);
+                badge.textContent = currentCount;
+                if (currentCount === 0) {
+                    badge.style.display = 'none';
+                }
+            }
+            
+            // Reload notifications to refresh the list
+            loadNotifications();
+            
+        } else {
+            console.error('Failed to mark notification as read:', response.status);
         }
-        
-        loadNotifications();
-        
     } catch (error) {
         console.error('Failed to mark notification as read:', error);
     }
 }
+
 
 function openWhatsApp() {
     const message = "Hello KUKU YETU, I'd like to know more about your products.";
