@@ -1262,9 +1262,10 @@ async function openNotification(notificationId) {
         if (response.ok) {
             console.log(`✅ Notification ${notificationId} marked as read`);
             
-            // Update the UI immediately
+            // Update the UI immediately - find the notification element
             const notificationElement = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
             if (notificationElement) {
+                // Remove unread class and styling
                 notificationElement.classList.remove('unread');
                 notificationElement.classList.add('read');
                 notificationElement.style.background = 'white';
@@ -1272,9 +1273,11 @@ async function openNotification(notificationId) {
                 
                 // Remove the unread dot
                 const dot = notificationElement.querySelector('span:last-child');
-                if (dot && dot.style.background === 'rgb(76, 175, 80)') {
+                if (dot) {
                     dot.remove();
                 }
+                
+                console.log(`✅ UI updated for notification ${notificationId}`);
             }
             
             // Update badge count
@@ -1288,8 +1291,13 @@ async function openNotification(notificationId) {
                 }
             }
             
-            // Reload notifications to refresh the list
-            loadNotifications();
+            // Also update the notification in our local data
+            if (currentUser && window.notificationsCache) {
+                const notif = window.notificationsCache.find(n => n.id === notificationId);
+                if (notif) {
+                    notif.is_read = true;
+                }
+            }
             
         } else {
             console.error('Failed to mark notification as read:', response.status);
@@ -1298,6 +1306,7 @@ async function openNotification(notificationId) {
         console.error('Failed to mark notification as read:', error);
     }
 }
+
 
 
 function openWhatsApp() {
