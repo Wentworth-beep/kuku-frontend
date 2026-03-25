@@ -261,8 +261,22 @@ function createProductCard(product) {
         stockText = 'Out of stock';
     }
     
-    const imagePath = product.images && product.images[0] ? product.images[0] : '';
-    const imageUrl = getSafeImageUrl(imagePath);
+    // Get image URL with proper fallback
+    let imageUrl;
+    if (product.images && product.images[0]) {
+        imageUrl = getSafeImageUrl(product.images[0]);
+    } else {
+        // Category-based fallback images
+        const categoryImages = {
+            'broilers': 'https://placehold.co/400x300/FF6B00/white?text=Broilers',
+            'layers': 'https://placehold.co/400x300/FF6B00/white?text=Layers',
+            'eggs': 'https://placehold.co/400x300/FF6B00/white?text=Fresh+Eggs',
+            'chicks': 'https://placehold.co/400x300/FF6B00/white?text=Chicks',
+            'other': 'https://placehold.co/400x300/FF6B00/white?text=KUKU+YETU'
+        };
+        imageUrl = categoryImages[product.category] || 'https://placehold.co/400x300/FF6B00/white?text=KUKU+YETU';
+    }
+    
     const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 200\'%3E%3Crect width=\'300\' height=\'200\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial\' font-size=\'16\' fill=\'%23999\' text-anchor=\'middle\' dy=\'.3em\'%3ELoading...%3C/text%3E%3C/svg%3E';
     
     return `
@@ -272,7 +286,7 @@ function createProductCard(product) {
                      src="${placeholder}"
                      alt="${product.title || 'Product'}" 
                      class="lazy-image"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E'">
+                     onerror="this.onerror=null; this.src='https://placehold.co/400x300/FF6B00/white?text=KUKU+YETU'">
                 <span class="product-category">${product.category || 'Uncategorized'}</span>
                 <span class="stock-status ${stockClass}">${stockText}</span>
             </div>
