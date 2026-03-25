@@ -15,20 +15,18 @@ window.addEventListener('error', function(e) {
 // Safe image URL function with fallback
 function getSafeImageUrl(imagePath) {
     if (!imagePath) {
-        return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
+        return 'https://placehold.co/400x300/FF6B00/white?text=No+Image';
     }
+    // If it's already a Cloudinary URL or any http URL
     if (imagePath.startsWith('http')) {
         return imagePath;
     }
+    // Legacy local uploads (should not happen with Cloudinary)
     if (imagePath.startsWith('/uploads/')) {
         return `https://kuku-backend-ntr4.onrender.com${imagePath}`;
     }
-    if (imagePath.startsWith('/')) {
-        return `https://kuku-backend-ntr4.onrender.com${imagePath}`;
-    }
-    return `https://kuku-backend-ntr4.onrender.com/uploads/${imagePath}`;
+    return 'https://placehold.co/400x300/FF6B00/white?text=KUKU+YETU';
 }
-
 // Global variables
 let products = [];
 let allProducts = [];
