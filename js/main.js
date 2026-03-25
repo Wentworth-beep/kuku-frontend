@@ -1049,8 +1049,8 @@ function showAbout() {
             
             <h3 style="margin: 30px 0 15px; color: var(--primary-dark);">Contact Us</h3>
             <p style="margin: 10px 0;"><i class="fas fa-envelope" style="color: var(--primary-color); width: 30px;"></i> Email: info@kukuyetu.com</p>
-            <p style="margin: 10px 0;"><i class="fas fa-phone" style="color: var(--primary-color); width: 30px;"></i> Phone: +254 700 000000</p>
-            <p style="margin: 10px 0;"><i class="fas fa-phone-alt" style="color: var(--primary-color); width: 30px;"></i> Alternative: +254 711 000000</p>
+            <p style="margin: 10px 0;"><i class="fas fa-phone" style="color: var(--primary-color); width: 30px;"></i> Phone: +254 112402377</p>
+            <p style="margin: 10px 0;"><i class="fas fa-phone-alt" style="color: var(--primary-color); width: 30px;"></i> Alternative: +254112402377 </p>
             
             <h3 style="margin: 30px 0 15px; color: var(--primary-dark);">Our Location</h3>
             <p style="margin: 10px 0;"><i class="fas fa-map-marker-alt" style="color: var(--primary-color); width: 30px;"></i> Nairobi, Kenya</p>
