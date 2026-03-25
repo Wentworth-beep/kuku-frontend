@@ -245,9 +245,16 @@ async function loadProducts() {
 }
 
 function getImageUrl(imagePath) {
-    if (!imagePath) return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
-    if (imagePath.startsWith('http')) return imagePath;
-    return `https://kuku-backend-ntr4.onrender.com${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
+    if (!imagePath) {
+        return 'https://placehold.co/100x100/FF6B00/white?text=No+Image';
+    }
+    if (imagePath.startsWith('http')) {
+        return imagePath;
+    }
+    if (imagePath.startsWith('/uploads/')) {
+        return `https://kuku-backend-ntr4.onrender.com${imagePath}`;
+    }
+    return `https://placehold.co/100x100/FF6B00/white?text=KUKU+YETU`;
 }
 
 function renderProductsTable(products) {
