@@ -23,7 +23,7 @@ function getCategoryDisplayName(category) {
 
 // ============== INITIALIZATION ==============
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('👑 Admin panel initializing...');
+    console.log('Admin panel initializing...');
     
     // Add favicon
     if (!document.querySelector('link[rel="icon"]')) {
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (storedToken) {
         adminToken = storedToken;
-        console.log('✅ Using stored token');
+        console.log(' Using stored token');
         showDashboard();
         loadDashboardData();
     } else {
@@ -763,4 +763,4 @@ window.deleteOrder = deleteOrder;
 window.removeExistingImage = removeExistingImage;
 window.handleEditOrder = handleEditOrder;
 
-console.log('✅ Admin panel ready - Cloudinary enabled');
+console.log(' Admin panel ready - Cloudinary enabled');
