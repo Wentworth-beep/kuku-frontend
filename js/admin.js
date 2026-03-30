@@ -3,11 +3,9 @@
 let adminToken = null;
 let currentOrders = [];
 let currentProducts = [];
-let currentEditingProduct = null;
-let currentEditingOrder = null;
 let imagesToRemove = [];
+let isSubmitting = false;
 
-// Categories
 const CATEGORIES = ['broilers', 'layers', 'eggs', 'chicks', 'other'];
 
 function getCategoryDisplayName(category) {
@@ -21,29 +19,17 @@ function getCategoryDisplayName(category) {
     return names[category] || category;
 }
 
-// ============== INITIALIZATION ==============
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Admin panel initializing...');
     
-    // Add favicon
-    if (!document.querySelector('link[rel="icon"]')) {
-        const favicon = document.createElement('link');
-        favicon.rel = 'icon';
-        favicon.href = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'.9em\' font-size=\'90\'%3E🐔%3C/text%3E%3C/svg%3E';
-        document.head.appendChild(favicon);
-    }
-    
     const storedToken = localStorage.getItem('adminToken');
-    
     if (storedToken) {
         adminToken = storedToken;
-        console.log(' Using stored token');
         showDashboard();
         loadDashboardData();
     } else {
         showLoginForm();
     }
-
     setupAdminEventListeners();
     populateCategoryDropdowns();
 });
@@ -54,7 +40,6 @@ function populateCategoryDropdowns() {
         productCategory.innerHTML = '<option value="">Select Category</option>' +
             CATEGORIES.map(cat => `<option value="${cat}">${getCategoryDisplayName(cat)}</option>`).join('');
     }
-    
     const editProductCategory = document.getElementById('editProductCategory');
     if (editProductCategory) {
         editProductCategory.innerHTML = '<option value="">Select Category</option>' +
@@ -100,8 +85,6 @@ function showLoginForm() {
     const dashboardDiv = document.getElementById('adminDashboard');
     if (loginDiv) loginDiv.style.display = 'flex';
     if (dashboardDiv) dashboardDiv.style.display = 'none';
-    const passwordField = document.getElementById('adminPassword');
-    if (passwordField) passwordField.value = '';
 }
 
 function showDashboard() {
@@ -111,10 +94,8 @@ function showDashboard() {
     if (dashboardDiv) dashboardDiv.style.display = 'block';
 }
 
-// ============== ADMIN LOGIN ==============
 async function adminLogin(event) {
     event.preventDefault();
-    
     const email = document.getElementById('adminEmail').value;
     const password = document.getElementById('adminPassword').value;
     const loginBtn = event.target.querySelector('button[type="submit"]');
@@ -173,32 +154,23 @@ function showTab(tab) {
     document.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
     });
-
     document.querySelectorAll('.admin-tab').forEach(tabEl => {
         tabEl.classList.toggle('active', tabEl.id === tab + 'Tab');
     });
-
     if (tab === 'products') loadProducts();
     else if (tab === 'orders') loadAllOrders();
     else if (tab === 'dashboard') loadDashboardData();
 }
 
-// ============== DASHBOARD ==============
 async function loadDashboardData() {
     showLoading();
     try {
         let orders = [];
-        try {
-            orders = await getAllOrders();
-        } catch (e) { orders = []; }
+        try { orders = await getAllOrders(); } catch (e) { orders = []; }
         currentOrders = orders;
-
         let products = [];
-        try {
-            products = await getProducts();
-        } catch (e) { products = []; }
+        try { products = await getProducts(); } catch (e) { products = []; }
         currentProducts = products;
-
         updateDashboardStats(orders, products);
         loadRecentOrders(orders.slice(0, 10));
     } catch (error) {
@@ -213,19 +185,12 @@ function updateDashboardStats(orders, products) {
     const totalOrders = orders.length;
     const pendingOrders = orders.filter(o => o.status === 'pending').length;
     const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
-
-    const totalOrdersEl = document.getElementById('totalOrders');
-    const pendingOrdersEl = document.getElementById('pendingOrders');
-    const completedOrdersEl = document.getElementById('completedOrders');
-    const totalProductsEl = document.getElementById('totalProducts');
-    
-    if (totalOrdersEl) totalOrdersEl.textContent = totalOrders;
-    if (pendingOrdersEl) pendingOrdersEl.textContent = pendingOrders;
-    if (completedOrdersEl) completedOrdersEl.textContent = completedOrders;
-    if (totalProductsEl) totalProductsEl.textContent = products.length;
+    document.getElementById('totalOrders').textContent = totalOrders;
+    document.getElementById('pendingOrders').textContent = pendingOrders;
+    document.getElementById('completedOrders').textContent = completedOrders;
+    document.getElementById('totalProducts').textContent = products.length;
 }
 
-// ============== PRODUCT FUNCTIONS ==============
 async function loadProducts() {
     showLoading();
     try {
@@ -242,30 +207,21 @@ async function loadProducts() {
 }
 
 function getImageUrl(imagePath) {
-    if (!imagePath) {
-        return 'https://placehold.co/100x100/FF6B00/white?text=No+Image';
-    }
-    if (imagePath.startsWith('http')) {
-        return imagePath;
-    }
+    if (!imagePath) return 'https://placehold.co/100x100/FF6B00/white?text=No+Image';
+    if (imagePath.startsWith('http')) return imagePath;
     return 'https://placehold.co/100x100/FF6B00/white?text=KUKU+YETU';
 }
 
 function renderProductsTable(products) {
     const tbody = document.getElementById('productsBody');
     if (!tbody) return;
-    
     if (!products || products.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No products found</td></tr>';
         return;
     }
-
     tbody.innerHTML = products.map(product => {
         let imageUrl = 'https://placehold.co/100x100/FF6B00/white?text=No+Image';
-        if (product.images && product.images[0]) {
-            imageUrl = getImageUrl(product.images[0]);
-        }
-        
+        if (product.images && product.images[0]) imageUrl = getImageUrl(product.images[0]);
         return `
             <tr>
                 <td>${product.product_id || product.id}</td>
@@ -275,10 +231,7 @@ function renderProductsTable(products) {
                 <td>Ksh ${product.price || 0}</td>
                 <td><span class="stock-badge ${product.stock_status}">${product.stock_status === 'low' ? 'Few Units' : product.stock_status === 'available' ? 'In Stock' : 'Out of Stock'}</span></td>
                 <td>${product.rating || 0} ★</td>
-                <td>
-                    <button class="btn-view" onclick="openEditProductModal(${product.id})" style="background:#2196f3;">Edit</button>
-                    <button class="btn-view" onclick="deleteProduct(${product.id})" style="background:#f44336;">Delete</button>
-                </td>
+                <td><button class="btn-view" onclick="openEditProductModal(${product.id})" style="background:#2196f3;">Edit</button><button class="btn-view" onclick="deleteProduct(${product.id})" style="background:#f44336;">Delete</button></td>
             </tr>
         `;
     }).join('');
@@ -307,18 +260,22 @@ function handleImagePreview(e) {
     }
 }
 
-// ============== FIXED: handleAddProduct with Button Disable ==============
+// FIXED: Single request with multiple images
 async function handleAddProduct(e) {
     e.preventDefault();
     
-    // Get the submit button to disable it
-    const submitButton = e.target.querySelector('button[type="submit"]');
+    if (isSubmitting) {
+        console.log('Submission already in progress');
+        return;
+    }
     
-    // Disable button to prevent multiple submissions
+    const submitButton = e.target.querySelector('button[type="submit"]');
     if (submitButton) {
         submitButton.disabled = true;
         submitButton.textContent = 'Adding Product...';
     }
+    
+    isSubmitting = true;
     
     const formData = new FormData();
     formData.append('title', document.getElementById('productTitle').value);
@@ -330,11 +287,10 @@ async function handleAddProduct(e) {
     formData.append('rating', document.getElementById('productRating').value);
     
     const images = document.getElementById('productImages').files;
-    console.log('Number of images selected:', images.length);
+    console.log('Adding product with', images.length, 'images');
     
     for (let i = 0; i < images.length; i++) {
         formData.append('images', images[i]);
-        console.log('Adding image:', images[i].name);
     }
     
     showLoading();
@@ -348,18 +304,18 @@ async function handleAddProduct(e) {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            showToast('Product added! Images stored in Cloudinary', 'success');
+            showToast('Product added successfully!', 'success');
             document.getElementById('addProductModal')?.classList.remove('active');
             loadProducts();
         } else {
             showToast(result.message || 'Failed to add product', 'error');
         }
     } catch (error) {
-        console.error('Error adding product:', error);
+        console.error('Error:', error);
         showToast('Error: ' + error.message, 'error');
     } finally {
         hideLoading();
-        // Re-enable button
+        isSubmitting = false;
         if (submitButton) {
             submitButton.disabled = false;
             submitButton.textContent = 'Add Product';
@@ -374,7 +330,6 @@ async function openEditProductModal(productId) {
         const response = await fetch(`/api/products/${productId}`);
         const data = await response.json();
         const product = data.product || data;
-        
         if (!product) throw new Error('Product not found');
         
         document.getElementById('editProductId').value = product.id;
@@ -397,7 +352,6 @@ async function openEditProductModal(productId) {
         } else if (previewDiv) {
             previewDiv.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No images</p>';
         }
-        
         document.getElementById('editProductModal').classList.add('active');
     } catch (error) {
         console.error('Error loading product:', error);
@@ -430,7 +384,6 @@ function handleEditImagePreview(e) {
     }
 }
 
-// ============== FIXED: handleEditProduct - Single API Call ==============
 async function handleEditProduct(e) {
     e.preventDefault();
     
@@ -449,7 +402,6 @@ async function handleEditProduct(e) {
         return;
     }
     
-    // Disable submit button
     const submitButton = e.target.querySelector('button[type="submit"]');
     if (submitButton) {
         submitButton.disabled = true;
@@ -459,8 +411,6 @@ async function handleEditProduct(e) {
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
-        
-        // Create FormData for ALL data - ONE REQUEST ONLY
         const formData = new FormData();
         formData.append('title', title);
         formData.append('price', parseFloat(price));
@@ -468,26 +418,21 @@ async function handleEditProduct(e) {
         formData.append('category', category);
         formData.append('stock_status', stockStatus);
         formData.append('rating', parseFloat(rating));
-        
         if (oldPrice) formData.append('old_price', parseFloat(oldPrice));
         if (imagesToRemove.length > 0) formData.append('images_to_remove', JSON.stringify(imagesToRemove));
-        
-        // Add new images
         for (let i = 0; i < newImages.length; i++) {
             formData.append('images', newImages[i]);
         }
         
-        // SINGLE API CALL for everything
         const response = await fetch(`/api/products/${productId}`, {
             method: 'PUT',
             headers: { 'x-auth-token': token },
             body: formData
         });
-        
         const result = await response.json();
         
         if (response.ok) {
-            showToast('Product updated! Images on Cloudinary', 'success');
+            showToast('Product updated!', 'success');
             document.getElementById('editProductModal').classList.remove('active');
             imagesToRemove = [];
             loadProducts();
@@ -499,7 +444,6 @@ async function handleEditProduct(e) {
         showToast('Failed to update: ' + error.message, 'error');
     } finally {
         hideLoading();
-        // Re-enable button
         if (submitButton) {
             submitButton.disabled = false;
             submitButton.textContent = 'Update Product';
@@ -528,7 +472,6 @@ async function deleteProduct(productId) {
     }
 }
 
-// ============== ORDER FUNCTIONS ==============
 async function loadAllOrders() {
     showLoading();
     try {
@@ -547,7 +490,8 @@ function renderAllOrdersTable(orders) {
     const tbody = document.getElementById('allOrdersBody');
     if (!tbody) return;
     if (!orders || !orders.length) {
-        tbody.innerHTML = '<tr><td colspan="7">No orders found</td></tr>';
+        tbody.innerHTML = '美容<td colspan="7">No orders found</td>';
+
         return;
     }
     tbody.innerHTML = orders.map(order => `
@@ -571,7 +515,8 @@ function loadRecentOrders(orders) {
     const tbody = document.getElementById('recentOrdersBody');
     if (!tbody) return;
     if (!orders || !orders.length) {
-        tbody.innerHTML = '<tr><td colspan="6">No recent orders</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No recent orders</td>';
+
         return;
     }
     tbody.innerHTML = orders.map(order => `
@@ -592,8 +537,6 @@ function loadRecentOrders(orders) {
 function openEditOrderModal(orderId) {
     const order = currentOrders.find(o => o.id === orderId);
     if (!order) return;
-    currentEditingOrder = order;
-    
     document.getElementById('editOrderId').value = order.id;
     document.getElementById('editOrderNumber').value = order.order_id || order.id;
     document.getElementById('editCustomerName').value = order.customer_name || '';
@@ -615,7 +558,6 @@ function openEditOrderModal(orderId) {
             </div>
         `).join('');
     }
-    
     document.getElementById('editOrderModal').classList.add('active');
 }
 
@@ -629,15 +571,11 @@ async function handleEditOrder(e) {
         specific_address: document.getElementById('editCustomerAddress').value,
         status: document.getElementById('editOrderStatus').value
     };
-    
     showLoading();
     try {
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': localStorage.getItem('adminToken')
-            },
+            headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('adminToken') },
             body: JSON.stringify(orderData)
         });
         const result = await response.json();
@@ -662,10 +600,7 @@ async function updateOrderStatus(orderId, status) {
     try {
         const response = await fetch(`/api/orders/${orderId}/status`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': localStorage.getItem('adminToken')
-            },
+            headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('adminToken') },
             body: JSON.stringify({ status })
         });
         if (response.ok) {
@@ -685,13 +620,10 @@ async function updateOrderStatus(orderId, status) {
 async function viewOrderDetails(orderId) {
     const order = currentOrders.find(o => o.id === orderId);
     if (!order) return;
-    
     const modalBody = document.getElementById('orderDetailsBody');
     if (!modalBody) return;
-    
     let products = [];
     try { products = JSON.parse(order.products); } catch(e) { products = order.products || []; }
-    
     modalBody.innerHTML = `
         <div class="order-details">
             <h3>Order #${order.order_id || order.id}</h3>
@@ -738,7 +670,6 @@ async function deleteOrder(orderId) {
     }
 }
 
-// ============== API FUNCTIONS ==============
 async function getProducts() {
     const response = await fetch('/api/products');
     const data = await response.json();
@@ -753,7 +684,6 @@ async function getAllOrders() {
     return data.orders || data || [];
 }
 
-// ============== UTILITY FUNCTIONS ==============
 function showLoading() {
     document.getElementById('loading-spinner')?.classList.add('active');
 }
@@ -772,7 +702,6 @@ function showToast(message, type) {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// ============== GLOBAL EXPOSURE ==============
 window.adminLogin = adminLogin;
 window.adminLogout = adminLogout;
 window.showTab = showTab;
