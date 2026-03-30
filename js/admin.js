@@ -256,7 +256,7 @@ function renderProductsTable(products) {
     if (!tbody) return;
     
     if (!products || products.length === 0) {
-        tbody.innerHTML = '}<td colspan="8" style="text-align: center;">No products found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No products found</td></tr>';
         return;
     }
 
@@ -410,6 +410,7 @@ function handleEditImagePreview(e) {
     }
 }
 
+// ============== FIXED: handleEditProduct - Single API Call ==============
 async function handleEditProduct(e) {
     e.preventDefault();
     
@@ -432,43 +433,33 @@ async function handleEditProduct(e) {
     try {
         const token = localStorage.getItem('adminToken');
         
-        const updateData = {
-            title: title,
-            price: parseFloat(price),
-            description: description,
-            category: category,
-            stock_status: stockStatus,
-            rating: parseFloat(rating)
-        };
+        // Create FormData for ALL data - ONE REQUEST ONLY
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('price', parseFloat(price));
+        formData.append('description', description);
+        formData.append('category', category);
+        formData.append('stock_status', stockStatus);
+        formData.append('rating', parseFloat(rating));
         
-        if (oldPrice) updateData.old_price = parseFloat(oldPrice);
-        if (imagesToRemove.length > 0) updateData.images_to_remove = JSON.stringify(imagesToRemove);
+        if (oldPrice) formData.append('old_price', parseFloat(oldPrice));
+        if (imagesToRemove.length > 0) formData.append('images_to_remove', JSON.stringify(imagesToRemove));
         
+        // Add new images
+        for (let i = 0; i < newImages.length; i++) {
+            formData.append('images', newImages[i]);
+        }
+        
+        // SINGLE API CALL for everything
         const response = await fetch(`/api/products/${productId}`, {
             method: 'PUT',
-            headers: {
-                'x-auth-token': token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updateData)
+            headers: { 'x-auth-token': token },
+            body: formData
         });
         
         const result = await response.json();
         
-        if (newImages && newImages.length > 0 && (response.ok || response.status === 200)) {
-            const formData = new FormData();
-            for (let i = 0; i < newImages.length; i++) {
-                formData.append('new_images', newImages[i]);
-            }
-            
-            await fetch(`/api/products/${productId}`, {
-                method: 'PUT',
-                headers: { 'x-auth-token': token },
-                body: formData
-            }).catch(e => console.log('Image upload note:', e));
-        }
-        
-        if (response.ok || response.status === 200) {
+        if (response.ok) {
             showToast('Product updated! Images on Cloudinary ☁️', 'success');
             document.getElementById('editProductModal').classList.remove('active');
             imagesToRemove = [];
