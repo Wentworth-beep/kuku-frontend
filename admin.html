@@ -7,10 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/admin.css">
-    <!-- Data URI favicon - no 404 errors -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐔%3C/text%3E%3C/svg%3E">
     <style>
-        /* Additional admin styles */
         .status-badge {
             display: inline-block;
             padding: 5px 12px;
@@ -36,13 +34,6 @@
             transition: all 0.3s;
         }
         .btn-view:hover { opacity: 0.8; transform: translateY(-1px); }
-        
-        .product-thumb {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 4px;
-        }
         
         .stock-badge {
             display: inline-block;
@@ -97,13 +88,6 @@
             color: #999;
         }
         .modal-body { padding: 20px; }
-        .modal-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
         
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; }
@@ -187,23 +171,10 @@
             100% { transform: rotate(360deg); }
         }
         
-        .table-container {
-            overflow-x: auto;
-            margin-top: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
+        .table-container { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
         tr:hover { background: #fafafa; }
         
         .stats-grid {
@@ -219,16 +190,8 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             text-align: center;
         }
-        .stat-card h3 {
-            margin: 0 0 10px;
-            font-size: 14px;
-            color: #666;
-        }
-        .stat-number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #ff6b00;
-        }
+        .stat-card h3 { margin: 0 0 10px; font-size: 14px; color: #666; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #ff6b00; }
         
         .admin-tab { display: none; }
         .admin-tab.active { display: block; }
@@ -250,10 +213,7 @@
             color: #666;
             transition: all 0.3s;
         }
-        .tab-btn.active {
-            color: #ff6b00;
-            border-bottom: 2px solid #ff6b00;
-        }
+        .tab-btn.active { color: #ff6b00; border-bottom: 2px solid #ff6b00; }
         
         .admin-login {
             min-height: 100vh;
@@ -271,10 +231,7 @@
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        .login-box h1 {
-            color: #ff6b00;
-            margin-bottom: 30px;
-        }
+        .login-box h1 { color: #ff6b00; margin-bottom: 30px; }
         .login-box button {
             width: 100%;
             padding: 12px;
@@ -321,45 +278,27 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .btn-secondary {
-            padding: 8px 16px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .btn-danger {
-            padding: 8px 16px;
-            background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
-    <!-- Loading Spinner -->
     <div id="loading-spinner" class="loading-spinner">
         <div class="spinner"></div>
     </div>
 
-    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- Admin Login -->
     <div id="adminLogin" class="admin-login">
         <div class="login-box">
-            <h1>🐔 KUKU YETU Admin</h1>
-            <form id="adminLoginForm" onsubmit="adminLogin(event)">
+            <h1>KUKU YETU Admin</h1>
+            <form id="adminLoginForm">
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="adminEmail" placeholder="Enter Secured Admin Email " required>
+                    <input type="email" id="adminEmail" placeholder="Enter Admin Email" required>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="adminPassword" placeholder="Enter Admin Password!" required>
+                    <input type="password" id="adminPassword" placeholder="Enter Admin Password" required>
                 </div>
                 <button type="submit">Login</button>
             </form>
@@ -371,7 +310,7 @@
         <div class="admin-header">
             <div class="container">
                 <div class="admin-header-content">
-                    <h1>🐔 KUKU YETU Admin Dashboard</h1>
+                    <h1>KUKU YETU Admin Dashboard</h1>
                     <button class="btn-logout" onclick="adminLogout()">Logout</button>
                 </div>
             </div>
@@ -380,113 +319,51 @@
         <div class="admin-nav">
             <div class="container">
                 <ul class="admin-tabs">
-                    <li><button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button></li>
-                    <li><button class="tab-btn" data-tab="products" onclick="showTab('products')">Products</button></li>
-                    <li><button class="tab-btn" data-tab="orders" onclick="showTab('orders')">Orders</button></li>
+                    <li><button class="tab-btn active" data-tab="dashboard">Dashboard</button></li>
+                    <li><button class="tab-btn" data-tab="products">Products</button></li>
+                    <li><button class="tab-btn" data-tab="orders">Orders</button></li>
                 </ul>
             </div>
         </div>
 
         <div class="admin-content">
             <div class="container">
-                <!-- Dashboard Tab -->
                 <div id="dashboardTab" class="admin-tab active">
                     <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3>Total Orders</h3>
-                            <div class="stat-number" id="totalOrders">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Pending Orders</h3>
-                            <div class="stat-number" id="pendingOrders">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Completed Orders</h3>
-                            <div class="stat-number" id="completedOrders">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Total Products</h3>
-                            <div class="stat-number" id="totalProducts">0</div>
-                        </div>
+                        <div class="stat-card"><h3>Total Orders</h3><div class="stat-number" id="totalOrders">0</div></div>
+                        <div class="stat-card"><h3>Pending Orders</h3><div class="stat-number" id="pendingOrders">0</div></div>
+                        <div class="stat-card"><h3>Completed Orders</h3><div class="stat-number" id="completedOrders">0</div></div>
+                        <div class="stat-card"><h3>Total Products</h3><div class="stat-number" id="totalProducts">0</div></div>
                     </div>
-
                     <div class="recent-orders">
                         <h2>Recent Orders</h2>
                         <div class="table-container">
-                            <table id="recentOrdersTable">
-                                <thead>
-                                    <tr>
-                                        <th>Order ID</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Status</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </thead>
-                                </thead>
-                                <tbody id="recentOrdersBody">
-                                    <!-- Orders will be loaded here -->
-                                </tbody>
-                            </table>
+                            <table><thead><tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="recentOrdersBody"></tbody></table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Products Tab -->
                 <div id="productsTab" class="admin-tab">
                     <div class="admin-section-header">
                         <h2>Manage Products</h2>
                         <button class="btn-primary" onclick="openAddProductModal()">+ Add New Product</button>
                     </div>
-
                     <div class="table-container">
-                        <table id="productsTable">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Image</th>
-                                    <th>Title</th>
-                                    <th>Category</th>
-                                    <th>Price</th>
-                                    <th>Stock</th>
-                                    <th>Rating</th>
-                                    <th>Actions</th>
-                                </thead>
-                            </thead>
-                            <tbody id="productsBody">
-                                <!-- Products will be loaded here -->
-                            </tbody>
-                        </table>
+                        <table><thead><tr><th>ID</th><th>Image</th><th>Title</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Actions</th></tr></thead><tbody id="productsBody"></tbody></table>
                     </div>
                 </div>
 
-                <!-- Orders Tab -->
                 <div id="ordersTab" class="admin-tab">
                     <h2>All Orders</h2>
                     <div class="table-container">
-                        <table id="allOrdersTable">
-                            <thead>
-                                <tr>
-                                    <th>Order ID</th>
-                                    <th>Customer Name</th>
-                                    <th>Phone</th>
-                                    <th>Location</th>
-                                    <th>Products</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </thead>
-                            </thead>
-                            <tbody id="allOrdersBody">
-                                <!-- Orders will be loaded here -->
-                            </tbody>
-                        </table>
+                        <table><thead><tr><th>Order ID</th><th>Customer Name</th><th>Phone</th><th>Location</th><th>Products</th><th>Status</th><th>Actions</th></tr></thead><tbody id="allOrdersBody"></tbody></table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add Product Modal -->
+    <!-- Add Product Modal - NO inline onsubmit -->
     <div class="modal" id="addProductModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -494,12 +371,11 @@
                 <button class="close-modal" onclick="document.getElementById('addProductModal').classList.remove('active')">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="addProductForm" enctype="multipart/form-data" onsubmit="handleAddProduct(event)">
+                <form id="addProductForm" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>Title *</label>
                         <input type="text" id="productTitle" required>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Price (Ksh) *</label>
@@ -510,12 +386,10 @@
                             <input type="number" id="productOldPrice" step="0.01">
                         </div>
                     </div>
-
                     <div class="form-group">
                         <label>Description *</label>
                         <textarea id="productDescription" rows="4" required></textarea>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Category *</label>
@@ -537,7 +411,6 @@
                             </select>
                         </div>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Rating</label>
@@ -551,14 +424,12 @@
                             </select>
                         </div>
                     </div>
-
                     <div class="form-group">
-                        <label>Product Images * (Select multiple - hold Ctrl/Cmd to select multiple)</label>
+                        <label>Product Images (Select multiple - hold Ctrl/Cmd)</label>
                         <input type="file" id="productImages" name="images" multiple accept="image/*" required>
                         <div class="image-preview" id="imagePreview"></div>
-                        <small><strong>Tip:</strong> Hold <kbd>Ctrl</kbd> (Windows) or <kbd>Cmd</kbd> (Mac) to select multiple images at once.</small>
+                        <small>Tip: Hold Ctrl (Windows) or Cmd (Mac) to select multiple images.</small>
                     </div>
-
                     <button type="submit" class="btn-primary" style="width: 100%;">Add Product</button>
                 </form>
             </div>
@@ -573,159 +444,46 @@
                 <button class="close-modal" onclick="document.getElementById('editProductModal').classList.remove('active')">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="editProductForm" enctype="multipart/form-data" onsubmit="handleEditProduct(event)">
+                <form id="editProductForm" enctype="multipart/form-data">
                     <input type="hidden" id="editProductId">
-                    
-                    <div class="form-group">
-                        <label>Title *</label>
-                        <input type="text" id="editProductTitle" required>
-                    </div>
-
+                    <div class="form-group"><label>Title *</label><input type="text" id="editProductTitle" required></div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Price (Ksh) *</label>
-                            <input type="number" id="editProductPrice" step="0.01" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Old Price (Optional)</label>
-                            <input type="number" id="editProductOldPrice" step="0.01">
-                        </div>
+                        <div class="form-group"><label>Price (Ksh) *</label><input type="number" id="editProductPrice" step="0.01" required></div>
+                        <div class="form-group"><label>Old Price</label><input type="number" id="editProductOldPrice" step="0.01"></div>
                     </div>
-
-                    <div class="form-group">
-                        <label>Description *</label>
-                        <textarea id="editProductDescription" rows="4" required></textarea>
-                    </div>
-
+                    <div class="form-group"><label>Description *</label><textarea id="editProductDescription" rows="4" required></textarea></div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Category *</label>
-                            <select id="editProductCategory" required>
-                                <option value="">Select Category</option>
-                                <option value="broilers">Broilers</option>
-                                <option value="layers">Layers</option>
-                                <option value="eggs">Eggs</option>
-                                <option value="chicks">Chicks</option>
-                                <option value="other">Other Products</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Stock Status</label>
-                            <select id="editProductStock">
-                                <option value="available">In Stock</option>
-                                <option value="low">Few Units Left</option>
-                                <option value="out">Out of Stock</option>
-                            </select>
-                        </div>
+                        <div class="form-group"><label>Category *</label><select id="editProductCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="broilers">Broilers</option>
+                            <option value="layers">Layers</option>
+                            <option value="eggs">Eggs</option>
+                            <option value="chicks">Chicks</option>
+                            <option value="other">Other Products</option>
+                        </select></div>
+                        <div class="form-group"><label>Stock Status</label><select id="editProductStock">
+                            <option value="available">In Stock</option>
+                            <option value="low">Few Units Left</option>
+                            <option value="out">Out of Stock</option>
+                        </select></div>
                     </div>
-
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Rating</label>
-                            <select id="editProductRating">
-                                <option value="1">1 Star</option>
-                                <option value="2">2 Stars</option>
-                                <option value="3">3 Stars</option>
-                                <option value="4">4 Stars</option>
-                                <option value="4.5">4.5 Stars</option>
-                                <option value="5">5 Stars</option>
-                            </select>
-                        </div>
+                        <div class="form-group"><label>Rating</label><select id="editProductRating">
+                            <option value="1">1 Star</option><option value="2">2 Stars</option>
+                            <option value="3">3 Stars</option><option value="4">4 Stars</option>
+                            <option value="4.5">4.5 Stars</option><option value="5">5 Stars</option>
+                        </select></div>
                     </div>
-
-                    <div class="form-group">
-                        <label>Current Images</label>
-                        <div class="image-preview" id="editImagePreview"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Add New Images (Optional - hold Ctrl/Cmd to select multiple)</label>
-                        <input type="file" id="editProductImages" name="images" multiple accept="image/*">
-                        <small><strong>Tip:</strong> Hold <kbd>Ctrl</kbd> (Windows) or <kbd>Cmd</kbd> (Mac) to select multiple images.</small>
-                    </div>
-
+                    <div class="form-group"><label>Current Images</label><div class="image-preview" id="editImagePreview"></div></div>
+                    <div class="form-group"><label>Add New Images</label><input type="file" id="editProductImages" multiple accept="image/*"></div>
                     <button type="submit" class="btn-primary" style="width: 100%;">Update Product</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Order Details Modal -->
-    <div class="modal" id="orderDetailsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Order Details</h2>
-                <button class="close-modal" onclick="document.getElementById('orderDetailsModal').classList.remove('active')">&times;</button>
-            </div>
-            <div class="modal-body" id="orderDetailsBody">
-                <!-- Order details will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Order Modal -->
-    <div class="modal" id="editOrderModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Edit Order</h2>
-                <button class="close-modal" onclick="document.getElementById('editOrderModal').classList.remove('active')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="editOrderForm" onsubmit="handleEditOrder(event)">
-                    <input type="hidden" id="editOrderId">
-                    
-                    <div class="form-group">
-                        <label>Order Number</label>
-                        <input type="text" id="editOrderNumber" readonly disabled>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Customer Name *</label>
-                        <input type="text" id="editCustomerName" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Phone Number *</label>
-                        <input type="tel" id="editCustomerPhone" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Location *</label>
-                        <input type="text" id="editCustomerLocation" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Specific Address</label>
-                        <textarea id="editCustomerAddress" rows="2"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Order Status</label>
-                        <select id="editOrderStatus">
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Products</label>
-                        <div id="editOrderProducts" style="background: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"></div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Total Amount</label>
-                        <input type="text" id="editOrderTotal" readonly disabled style="background: #f5f5f5;">
-                    </div>
-                    
-                    <button type="submit" class="btn-primary" style="width: 100%;">Save Changes</button>
-                </form>
-            </div>
-        </div>
-    </div>
+    <div class="modal" id="orderDetailsModal"><div class="modal-content"><div class="modal-header"><h2>Order Details</h2><button class="close-modal" onclick="document.getElementById('orderDetailsModal').classList.remove('active')">&times;</button></div><div class="modal-body" id="orderDetailsBody"></div></div></div>
+    <div class="modal" id="editOrderModal"><div class="modal-content"><div class="modal-header"><h2>Edit Order</h2><button class="close-modal" onclick="document.getElementById('editOrderModal').classList.remove('active')">&times;</button></div><div class="modal-body"><form id="editOrderForm"><input type="hidden" id="editOrderId"><div class="form-group"><label>Order Number</label><input type="text" id="editOrderNumber" readonly disabled></div><div class="form-group"><label>Customer Name *</label><input type="text" id="editCustomerName" required></div><div class="form-group"><label>Phone Number *</label><input type="tel" id="editCustomerPhone" required></div><div class="form-group"><label>Location *</label><input type="text" id="editCustomerLocation" required></div><div class="form-group"><label>Specific Address</label><textarea id="editCustomerAddress" rows="2"></textarea></div><div class="form-group"><label>Order Status</label><select id="editOrderStatus"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div><div class="form-group"><label>Products</label><div id="editOrderProducts" style="background:#f8f9fa;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;"></div></div><div class="form-group"><label>Total Amount</label><input type="text" id="editOrderTotal" readonly disabled></div><button type="submit" class="btn-primary" style="width:100%;">Save Changes</button></form></div></div></div>
 
     <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
