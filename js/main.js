@@ -145,10 +145,10 @@ async function loadAllProducts() {
         
         if (data && data.success === true && data.products) {
             allProducts = data.products;
-            console.log(`✅ Loaded ${allProducts.length} products from API`);
+            console.log(` Loaded ${allProducts.length} products from API`);
         } else if (Array.isArray(data)) {
             allProducts = data;
-            console.log(`✅ Loaded ${allProducts.length} products from array`);
+            console.log(`Loaded ${allProducts.length} products from array`);
         } else {
             console.warn('Unexpected response format, using empty array');
             allProducts = [];
