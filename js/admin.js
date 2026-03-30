@@ -307,8 +307,18 @@ function handleImagePreview(e) {
     }
 }
 
+// ============== FIXED: handleAddProduct with Button Disable ==============
 async function handleAddProduct(e) {
     e.preventDefault();
+    
+    // Get the submit button to disable it
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    
+    // Disable button to prevent multiple submissions
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Adding Product...';
+    }
     
     const formData = new FormData();
     formData.append('title', document.getElementById('productTitle').value);
@@ -320,8 +330,11 @@ async function handleAddProduct(e) {
     formData.append('rating', document.getElementById('productRating').value);
     
     const images = document.getElementById('productImages').files;
+    console.log('Number of images selected:', images.length);
+    
     for (let i = 0; i < images.length; i++) {
         formData.append('images', images[i]);
+        console.log('Adding image:', images[i].name);
     }
     
     showLoading();
@@ -333,17 +346,24 @@ async function handleAddProduct(e) {
             body: formData
         });
         const result = await response.json();
+        
         if (response.ok && result.success) {
-            showToast('Product added! Images stored in Cloudinary ☁️', 'success');
+            showToast('Product added! Images stored in Cloudinary', 'success');
             document.getElementById('addProductModal')?.classList.remove('active');
             loadProducts();
         } else {
-            showToast(result.message || 'Failed', 'error');
+            showToast(result.message || 'Failed to add product', 'error');
         }
     } catch (error) {
+        console.error('Error adding product:', error);
         showToast('Error: ' + error.message, 'error');
     } finally {
         hideLoading();
+        // Re-enable button
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Add Product';
+        }
     }
 }
 
@@ -429,6 +449,13 @@ async function handleEditProduct(e) {
         return;
     }
     
+    // Disable submit button
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Updating...';
+    }
+    
     showLoading();
     try {
         const token = localStorage.getItem('adminToken');
@@ -460,7 +487,7 @@ async function handleEditProduct(e) {
         const result = await response.json();
         
         if (response.ok) {
-            showToast('Product updated! Images on Cloudinary ☁️', 'success');
+            showToast('Product updated! Images on Cloudinary', 'success');
             document.getElementById('editProductModal').classList.remove('active');
             imagesToRemove = [];
             loadProducts();
@@ -472,6 +499,11 @@ async function handleEditProduct(e) {
         showToast('Failed to update: ' + error.message, 'error');
     } finally {
         hideLoading();
+        // Re-enable button
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Update Product';
+        }
     }
 }
 
@@ -754,4 +786,4 @@ window.deleteOrder = deleteOrder;
 window.removeExistingImage = removeExistingImage;
 window.handleEditOrder = handleEditOrder;
 
-console.log(' Admin panel ready - Cloudinary enabled');
+console.log('Admin panel ready - Cloudinary enabled');
