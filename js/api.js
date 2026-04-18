@@ -6,7 +6,7 @@ const originalFetch = window.fetch;
 window.fetch = function(url, options) {
     if (typeof url === 'string' && url.startsWith('/api')) {
         url = API_BASE_URL + url;
-        console.log('🔌 API Request:', url);
+        console.log('API Request:', url);
     }
     return originalFetch(url, options);
 };
@@ -132,17 +132,22 @@ async function deleteProduct(id, token) {
 
 // ============== ORDERS API ==============
 
-// Get all orders (admin only)
-async function getOrders(token) {
+// Get all orders (admin only) - FIXED: This matches what admin.js expects
+async function getAllOrders(token) {
     try {
         const response = await fetch('/api/orders', {
             headers: { 'x-auth-token': token }
         });
         return await response.json();
     } catch (error) {
-        console.error('Get orders API error:', error);
+        console.error('Get all orders API error:', error);
         throw error;
     }
+}
+
+// Get all orders (admin only) - alias for compatibility
+async function getOrders(token) {
+    return getAllOrders(token);
 }
 
 // Get user orders
@@ -227,10 +232,10 @@ async function updateUserProfile(userData, token) {
     }
 }
 
-// Get user notifications
+// Get user notifications - FIXED endpoint
 async function getNotifications(token) {
     try {
-        const response = await fetch('/api/users/notifications', {
+        const response = await fetch('/api/notifications', {
             headers: { 'x-auth-token': token }
         });
         return await response.json();
@@ -240,10 +245,10 @@ async function getNotifications(token) {
     }
 }
 
-// Mark notification as read
+// Mark notification as read - FIXED endpoint
 async function markNotificationRead(id, token) {
     try {
-        const response = await fetch(`/api/users/notifications/${id}/read`, {
+        const response = await fetch(`/api/notifications/${id}/read`, {
             method: 'PUT',
             headers: { 'x-auth-token': token }
         });
@@ -298,6 +303,7 @@ window.api = {
     
     // Orders
     getOrders,
+    getAllOrders,
     getUserOrders,
     createOrder,
     updateOrderStatus,
@@ -311,4 +317,8 @@ window.api = {
     toggleFavorite
 };
 
-console.log('✅ API module loaded with base URL:', API_BASE_URL);
+// Also expose individual functions globally for admin.js
+window.getAllOrders = getAllOrders;
+window.getProducts = getProducts;
+
+console.log('API module loaded with base URL:', API_BASE_URL);
