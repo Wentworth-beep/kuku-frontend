@@ -23,8 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Admin panel initializing...');
     
     const storedToken = localStorage.getItem('adminToken');
-    if (storedToken) {
+    const storedAdmin = localStorage.getItem('admin');
+    
+    if (storedToken && storedAdmin) {
         adminToken = storedToken;
+        console.log('Using stored token');
         showDashboard();
         loadDashboardData();
     } else {
@@ -119,7 +122,7 @@ async function adminLogin(event) {
         
         const result = await response.json();
         
-        if (result.token && result.user && 
+        if (response.ok && result.token && result.user && 
             (result.user.email === 'admin@kukuyetu.com' || result.user.is_admin === true)) {
             localStorage.setItem('adminToken', result.token);
             localStorage.setItem('admin', JSON.stringify(result.user));
@@ -130,6 +133,10 @@ async function adminLogin(event) {
         } else {
             showToast('Access denied. Admin credentials required.', 'error');
             document.getElementById('adminPassword').value = '';
+            // Clear invalid token
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('admin');
+            adminToken = null;
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -163,14 +170,52 @@ function showTab(tab) {
 }
 
 async function loadDashboardData() {
+    // Check if token is valid
+    if (!adminToken) {
+        showToast('Please login again', 'error');
+        showLoginForm();
+        return;
+    }
+    
     showLoading();
     try {
+        // Load orders
         let orders = [];
-        try { orders = await getAllOrders(); } catch (e) { orders = []; }
+        try {
+            const ordersData = await getAllOrders();
+            // Handle both array and object responses
+            if (Array.isArray(ordersData)) {
+                orders = ordersData;
+            } else if (ordersData && ordersData.orders && Array.isArray(ordersData.orders)) {
+                orders = ordersData.orders;
+            } else if (ordersData && ordersData.data && Array.isArray(ordersData.data)) {
+                orders = ordersData.data;
+            } else {
+                orders = [];
+            }
+        } catch (e) {
+            console.error('Error loading orders:', e);
+            orders = [];
+        }
         currentOrders = orders;
+
+        // Load products
         let products = [];
-        try { products = await getProducts(); } catch (e) { products = []; }
+        try {
+            const productsData = await getProducts();
+            if (Array.isArray(productsData)) {
+                products = productsData;
+            } else if (productsData && productsData.products && Array.isArray(productsData.products)) {
+                products = productsData.products;
+            } else {
+                products = [];
+            }
+        } catch (e) {
+            console.error('Error loading products:', e);
+            products = [];
+        }
         currentProducts = products;
+
         updateDashboardStats(orders, products);
         loadRecentOrders(orders.slice(0, 10));
     } catch (error) {
@@ -182,19 +227,35 @@ async function loadDashboardData() {
 }
 
 function updateDashboardStats(orders, products) {
-    const totalOrders = orders.length;
-    const pendingOrders = orders.filter(o => o.status === 'pending').length;
-    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
-    document.getElementById('totalOrders').textContent = totalOrders;
-    document.getElementById('pendingOrders').textContent = pendingOrders;
-    document.getElementById('completedOrders').textContent = completedOrders;
-    document.getElementById('totalProducts').textContent = products.length;
+    // Ensure orders is an array
+    const ordersArray = Array.isArray(orders) ? orders : [];
+    const productsArray = Array.isArray(products) ? products : [];
+    
+    const totalOrders = ordersArray.length;
+    const pendingOrders = ordersArray.filter(o => o && o.status === 'pending').length;
+    const completedOrders = ordersArray.filter(o => o && (o.status === 'completed' || o.status === 'delivered')).length;
+    
+    const totalOrdersEl = document.getElementById('totalOrders');
+    const pendingOrdersEl = document.getElementById('pendingOrders');
+    const completedOrdersEl = document.getElementById('completedOrders');
+    const totalProductsEl = document.getElementById('totalProducts');
+    
+    if (totalOrdersEl) totalOrdersEl.textContent = totalOrders;
+    if (pendingOrdersEl) pendingOrdersEl.textContent = pendingOrders;
+    if (completedOrdersEl) completedOrdersEl.textContent = completedOrders;
+    if (totalProductsEl) totalProductsEl.textContent = productsArray.length;
 }
 
 async function loadProducts() {
     showLoading();
     try {
-        const products = await getProducts();
+        const productsData = await getProducts();
+        let products = [];
+        if (Array.isArray(productsData)) {
+            products = productsData;
+        } else if (productsData && productsData.products && Array.isArray(productsData.products)) {
+            products = productsData.products;
+        }
         currentProducts = products;
         renderProductsTable(products);
     } catch (error) {
@@ -260,7 +321,6 @@ function handleImagePreview(e) {
     }
 }
 
-// FIXED: Single request with multiple images
 async function handleAddProduct(e) {
     e.preventDefault();
     
@@ -475,7 +535,13 @@ async function deleteProduct(productId) {
 async function loadAllOrders() {
     showLoading();
     try {
-        const orders = await getAllOrders();
+        const ordersData = await getAllOrders();
+        let orders = [];
+        if (Array.isArray(ordersData)) {
+            orders = ordersData;
+        } else if (ordersData && ordersData.orders && Array.isArray(ordersData.orders)) {
+            orders = ordersData.orders;
+        }
         currentOrders = orders;
         renderAllOrdersTable(orders);
     } catch (error) {
@@ -489,9 +555,8 @@ async function loadAllOrders() {
 function renderAllOrdersTable(orders) {
     const tbody = document.getElementById('allOrdersBody');
     if (!tbody) return;
-    if (!orders || !orders.length) {
-        tbody.innerHTML = '美容<td colspan="7">No orders found</td>';
-
+    if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No orders found</td></tr>';
         return;
     }
     tbody.innerHTML = orders.map(order => `
@@ -514,9 +579,8 @@ function renderAllOrdersTable(orders) {
 function loadRecentOrders(orders) {
     const tbody = document.getElementById('recentOrdersBody');
     if (!tbody) return;
-    if (!orders || !orders.length) {
-        tbody.innerHTML = '<tr><td colspan="6">No recent orders</td>';
-
+    if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No recent orders</td></tr>';
         return;
     }
     tbody.innerHTML = orders.map(order => `
@@ -673,7 +737,7 @@ async function deleteOrder(orderId) {
 async function getProducts() {
     const response = await fetch('/api/products');
     const data = await response.json();
-    return data.products || data || [];
+    return data;
 }
 
 async function getAllOrders() {
@@ -681,7 +745,7 @@ async function getAllOrders() {
     if (!token) return [];
     const response = await fetch('/api/orders', { headers: { 'x-auth-token': token } });
     const data = await response.json();
-    return data.orders || data || [];
+    return data;
 }
 
 function showLoading() {
